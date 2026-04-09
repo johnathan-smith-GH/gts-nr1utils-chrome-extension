@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3
+- Update README description and feature details for clarity
+
 ## 1.2
 - Remove version from extension name (Chrome already displays it)
 - Switch to x.y versioning format
