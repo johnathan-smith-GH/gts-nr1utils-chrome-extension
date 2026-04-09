@@ -1,0 +1,993 @@
+* {
+  padding: 0;
+  margin: 0;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body {
+  --accent-color: rgb(75, 128, 104);
+  --accent-color-semitransparent: rgba(75, 128, 104, 0.25);
+  --border-color: #EAEAEA;
+  --border-color-highlight: #CCC;
+  --code-color: #008890;
+  --code-font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+  monospace;
+  --system-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+  "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+  sans-serif;
+
+  color: #333;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  body {
+    --accent-color: rgba(130, 210, 170, 1);
+    --accent-color-semitransparent: rgba(130, 210, 170, 0.25);
+    --border-color: #383838;
+    --outline-color: #b1b1b1;
+    --code-color: #00e4f1;
+
+    background-color: #292a2d;
+
+    color: #FFF;
+  }
+}
+
+.App-nav {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: rgba(255, 255, 255, 0.9);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-nav {
+    background-color: #292a2d;
+  }
+}
+
+.App-navMain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 4px;
+}
+
+.App-navMain a {
+  border: 1.5px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-weight: 500;
+  background-color: rgba(0, 0, 0, 0.03);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-navMain a {
+    background-color: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.App-navMain a:hover {
+  background-color: var(--accent-color-semitransparent);
+  border-color: var(--accent-color);
+}
+
+.App-guideBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 12px;
+  background-color: #d4a017;
+  border: 1.5px solid #d4a017 !important;
+  color: #FFF !important;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.App-guideBtn:hover {
+  background-color: #b8890f;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-guideBtn {
+    background-color: #d4a017;
+    color: #FFF !important;
+  }
+}
+
+.App-navSecondary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+}
+
+.App-navControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+}
+
+.App-nav a {
+  color: var(--accent-color);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.App-clearLog {
+  color: #FFF !important;
+  background-color: #c0392b;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  transition: background-color 150ms ease;
+}
+
+.App-clearLog:hover {
+  background-color: #e74c3c;
+}
+
+.App-exportBtn {
+  color: #FFF !important;
+  background-color: #1a7f8a;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  transition: background-color 150ms ease;
+}
+
+.App-exportBtn:hover {
+  background-color: #21a3b1;
+}
+
+.App-nav--currentLink {
+  background-color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+  color: #FFF !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-nav--currentLink {
+    background-color: #3A6B55 !important;
+    border-color: #3A6B55 !important;
+  }
+}
+
+.App-urlJson {
+  padding: 10px 20px;
+  font-size: 11px;
+  font-family: Menlo, monospace;
+  white-space: pre;
+  line-height: 1.5;
+}
+
+.App-graphQL {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.App-logWrapper {
+  min-width: 300px;
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.App-log {
+  overflow: auto;
+  flex: 1;
+}
+
+.App-log li {
+  list-style: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.App-log li:last-child {
+  border-bottom: none;
+}
+
+.App-requestName {
+  font-size: 12px;
+}
+
+.App-log-item:focus-visible {
+  outline: 0;
+  box-shadow: 0px 0px 3px var(--accent-color) inset;
+}
+
+.App-log-item--selected {
+  background-color: var(--accent-color-semitransparent);
+}
+
+.App-log-item--selected .App-requestName {
+  font-weight: bold;
+}
+
+.App-requestType {
+  text-transform: uppercase;
+  color: #FFF;
+  background-color: var(--accent-color);
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 5px;
+  margin-right: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-requestType {
+    border: 1px solid var(--accent-color);
+    background-color: transparent;
+  }
+}
+
+.App-logSelected {
+  flex-grow: 2;
+  overflow: auto;
+}
+
+.App-logSelectedItem {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.App-logSelectedItem h2 {
+  font-size: 12px;
+  padding: 20px 20px 0;
+  position: relative;
+}
+
+.App-codeOverageMessage {
+  display: block;
+  margin-top: 20px;
+}
+
+.App-logSelectedItem code {
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.App-logCodeWrapper {
+  font-size: 12px;
+  padding: 20px;
+  overflow-x: auto;
+}
+
+.App-requestType--success {
+  background-color: #2B8C0E;
+  border-color: #2B8C0E;
+}
+
+.App-requestType--pending {
+  background-color: #d4a017;
+  border-color: #d4a017;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-requestType--pending {
+    background-color: transparent;
+    border: 1px solid #d4a017;
+    color: #d4a017;
+  }
+}
+
+.App-requestType--withErrors {
+  background-color: #F00;
+  border-color: #F00;
+}
+
+.App-requestName--withErrors {
+  color: #F00;
+}
+
+.App-jsonKey {
+  color: var(--code-color);
+}
+
+.App-checkBoxOption {
+  white-space: nowrap;
+}
+
+.App-checkBoxOption input[type="checkbox"] {
+  margin-right: 8px;
+  position: relative;
+  top: 3px;
+}
+
+.App-logFilter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: rgba(75, 128, 104, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-logFilter {
+    background-color: rgba(130, 210, 170, 0.06);
+  }
+}
+
+.App-logFilterLabel {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--accent-color);
+}
+
+.App-logFilter input[type="text"] {
+  border: 1px solid var(--border-color);
+  border-bottom: 2px solid var(--accent-color);
+  border-radius: 4px;
+  padding: 6px 10px;
+  flex: 1;
+  min-width: 0;
+  background-color: rgba(255, 255, 255, 0.6);
+  font-family: var(--system-font-family);
+  font-size: 13px;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.App-logFilter input[type="text"]::placeholder {
+  color: #AAA;
+  font-style: italic;
+}
+
+.App-logFilter input[type="text"]:focus {
+  outline: none;
+  border-bottom-color: var(--accent-color);
+  box-shadow: 0 1px 0 var(--accent-color);
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-logFilter input[type="text"] {
+    color: #FFF;
+    background-color: rgba(0, 0, 0, 0.25);
+    border-color: var(--border-color);
+    border-bottom-color: var(--accent-color);
+  }
+
+  .App-logFilter input[type="text"]::placeholder {
+    color: #777;
+  }
+
+  .App-logFilter input[type="text"]:focus {
+    box-shadow: 0 1px 0 var(--accent-color);
+  }
+}
+
+.copy-icon svg {
+  font-size: 12px !important;
+}
+
+.App-flexBreak {
+  flex-basis: 100%;
+  height: 0;
+}
+
+.App-requestTimingLabel {
+  display: inline-block;
+  margin-top: 4px;
+  color: #FFF;
+  background-color: #2B8C0E;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-requestTimingLabel {
+    border: 1px solid #2B8C0E;
+    background-color: transparent;
+    color: #2B8C0E;
+  }
+}
+
+.App-requestTimingLabel--pending {
+  background-color: #d4a017;
+  border-color: #d4a017;
+  animation: pendingPulse 1.5s ease-in-out infinite;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-requestTimingLabel--pending {
+    background-color: transparent;
+    border: 1px solid #d4a017;
+    color: #d4a017;
+  }
+}
+
+.App-requestTimingValue--pending {
+  color: #d4a017;
+}
+
+@keyframes pendingPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.App-requestTimingLabel--timeout {
+  background-color: #F00;
+  border-color: #F00;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-requestTimingLabel--timeout {
+    background-color: transparent;
+    border-color: #F00;
+    color: #F00;
+  }
+}
+
+.App-requestTimingValue {
+  font-size: 12px;
+  margin-top: 4px;
+  margin-left: 8px;
+}
+
+.App-requestTimingValue--timeout {
+  color: #F00;
+}
+
+.App-resultToolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: #FFF;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-resultToolbar {
+    background-color: #292a2d;
+  }
+}
+
+.App-jsonSearch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: rgba(75, 128, 104, 0.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-jsonSearch {
+    background-color: rgba(130, 210, 170, 0.06);
+  }
+}
+
+.App-jsonSearch input[type="text"] {
+  border: 1px solid var(--border-color);
+  border-bottom: 2px solid var(--accent-color);
+  border-radius: 4px;
+  padding: 6px 10px;
+  flex: 1;
+  min-width: 0;
+  background-color: rgba(255, 255, 255, 0.6);
+  font-family: var(--system-font-family);
+  font-size: 13px;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.App-jsonSearch input[type="text"]::placeholder {
+  color: #AAA;
+  font-style: italic;
+}
+
+.App-jsonSearch input[type="text"]:focus {
+  outline: none;
+  border-bottom-color: var(--accent-color);
+  box-shadow: 0 1px 0 var(--accent-color);
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-jsonSearch input[type="text"] {
+    color: #FFF;
+    background-color: rgba(0, 0, 0, 0.25);
+    border-color: var(--border-color);
+    border-bottom-color: var(--accent-color);
+  }
+}
+
+.App-jsonSearchCount {
+  font-size: 12px;
+  color: #999;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.App-jsonSearchNav {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: #999;
+  cursor: pointer;
+  font-size: 14px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.App-jsonSearchNav:hover {
+  background-color: var(--accent-color-semitransparent);
+  color: var(--accent-color);
+}
+
+::highlight(search-results) {
+  background-color: rgba(255, 255, 0, 0.5);
+  color: #000;
+}
+
+::highlight(search-current) {
+  background-color: #f57c00;
+  color: #FFF;
+}
+
+/* ============================================================
+   Selection Checkboxes & Export Dropdown
+   ============================================================ */
+
+.App-log-checkbox {
+  margin-right: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.App-selectAll {
+  display: flex;
+  align-items: center;
+  padding: 6px 18px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: rgba(75, 128, 104, 0.04);
+  font-size: 12px;
+}
+
+.App-selectAll label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-selectAll {
+    background-color: rgba(130, 210, 170, 0.04);
+  }
+}
+
+.App-copyResultBar {
+  display: flex;
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.App-copyResultBtn {
+  color: #FFF !important;
+  background-color: #1a7f8a;
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.App-copyResultBtn:hover {
+  background-color: #21a3b1;
+}
+
+.App-errorBanner {
+  padding: 12px 20px;
+  background-color: #fef2f2;
+  border-left: 4px solid #dc2626;
+  border-bottom: 1px solid var(--border-color);
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-errorBanner {
+    background-color: rgba(220, 38, 38, 0.1);
+  }
+}
+
+.App-errorBannerLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-errorBannerLabel {
+    color: #ddd;
+  }
+}
+
+.App-errorBannerItem {
+  font-size: 12px;
+  font-family: var(--code-font-family);
+  line-height: 1.5;
+  color: #dc2626;
+  padding: 2px 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-errorBannerItem {
+    color: #f87171;
+  }
+}
+
+.App-accountIdBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background-color: #f0fdf4;
+  border-left: 4px solid #16a34a;
+  border-bottom: 1px solid var(--border-color);
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-accountIdBanner {
+    background-color: rgba(22, 163, 74, 0.1);
+  }
+}
+
+.App-accountIdLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: #333;
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-accountIdLabel {
+    color: #ddd;
+  }
+}
+
+.App-accountIdValue {
+  font-size: 12px;
+  font-weight: 500;
+  color: #16a34a;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-accountIdValue {
+    color: #4ade80;
+  }
+}
+
+.App-owningTeamBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background-color: #f0f9ff;
+  border-left: 4px solid #2563eb;
+  border-bottom: 1px solid var(--border-color);
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-owningTeamBanner {
+    background-color: rgba(37, 99, 235, 0.1);
+  }
+}
+
+.App-owningTeamLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: #333;
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-owningTeamLabel {
+    color: #ddd;
+  }
+}
+
+.App-owningTeamValue {
+  font-size: 12px;
+  font-weight: 500;
+  color: #2563eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-owningTeamValue {
+    color: #60a5fa;
+  }
+}
+
+.App-rawJson {
+  font-family: var(--code-font-family);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 16px 20px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: inherit;
+}
+
+.App-multiAccountBanner {
+  padding: 8px 18px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: rgba(212, 160, 23, 0.08);
+  border-left: 4px solid #d4a017;
+  font-size: 11px;
+}
+
+.App-multiAccountLabel {
+  display: block;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-multiAccountLabel {
+    color: #ddd;
+  }
+}
+
+.App-multiAccountBtn {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  background-color: #1a7f8a;
+  color: #FFF !important;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  transition: background-color 150ms ease;
+}
+
+.App-multiAccountBtn:hover {
+  background-color: #21a3b1;
+}
+
+.App-multiAccountBtn--active {
+  background-color: #d4a017;
+}
+
+.App-multiAccountBtn--active:hover {
+  background-color: #b8890f;
+}
+
+.App-selectHint {
+  padding: 6px 18px;
+  font-size: 11px;
+  color: #999;
+  font-style: italic;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.App-exportBtn--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.App-confirmOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.App-confirmDialog {
+  background-color: #FFF;
+  border-radius: 8px;
+  padding: 20px 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  max-width: 320px;
+  text-align: center;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-confirmDialog {
+    background-color: #2a2a2a;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+}
+
+.App-confirmMessage {
+  font-size: 13px;
+  margin: 0 0 16px;
+  line-height: 1.4;
+}
+
+.App-confirmActions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.App-confirmBtn {
+  padding: 6px 20px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  transition: background-color 150ms ease;
+}
+
+.App-confirmBtn--no {
+  color: #FFF !important;
+  background-color: #999;
+}
+
+.App-confirmBtn--no:hover {
+  background-color: #777;
+}
+
+.App-confirmBtn--yes {
+  color: #FFF !important;
+  background-color: #1a7f8a;
+}
+
+.App-confirmBtn--yes:hover {
+  background-color: #21a3b1;
+}
+
+/* ============================================================
+   Debug Info Page
+   ============================================================ */
+.DebugMode-container {
+  padding: 20px 24px;
+  font-size: 14px;
+  font-family: var(--system-font-family);
+  overflow-y: auto;
+}
+
+.DebugMode-heading {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 24px 0 12px;
+}
+
+.DebugMode-heading:first-child {
+  margin-top: 0;
+}
+
+.DebugMode-subheading {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 16px 0 8px;
+}
+
+.DebugMode-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.DebugMode-table th,
+.DebugMode-table td {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.DebugMode-table tr:last-child td {
+  border-bottom: none;
+}
+
+.DebugMode-table th {
+  font-weight: 600;
+  font-size: 12px;
+  color: #888;
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+@media (prefers-color-scheme: dark) {
+  .DebugMode-table th {
+    color: #999;
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+}
+
+.DebugMode-table td:first-child {
+  font-weight: 500;
+  white-space: nowrap;
+  width: 40%;
+}
+
+.DebugMode-table td:last-child {
+  word-break: break-all;
+}
+
+.DebugMode-link {
+  color: var(--accent-color);
+  text-decoration: none;
+}
+
+.DebugMode-link:hover {
+  text-decoration: underline;
+}
+
+.DebugMode-otherLink {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--accent-color);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.DebugMode-otherLink:hover {
+  text-decoration: underline;
+}
+
+.DebugMode-empty {
+  padding: 12px 0;
+  color: #999;
+  font-style: italic;
+  font-size: 13px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .DebugMode-empty {
+    color: #666;
+  }
+}

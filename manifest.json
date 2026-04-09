@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "GTS NR1 Utils [DEV] 2.6.0",
+  "description": "Development build - some utils to make development a bit easier",
+  "version": "2.6.0",
+  "permissions": [
+    "webNavigation",
+    "tabs",
+    "sidePanel",
+    "scripting",
+    "cookies"
+  ],
+  "host_permissions": [
+    "https://*.newrelic.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "GTS NR1 Utils"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.newrelic.com/*"
+      ],
+      "js": ["early-wrap.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://*.newrelic.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["page-script.js"],
+      "matches": ["https://*.newrelic.com/*"]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
