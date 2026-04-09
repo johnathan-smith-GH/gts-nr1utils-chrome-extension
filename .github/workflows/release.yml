@@ -33,5 +33,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="v${{ steps.version.outputs.version }}"
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          gh release create "$VERSION" --title "$VERSION" --notes "$COMMIT_MSG"
+          if gh release view "$VERSION" > /dev/null 2>&1; then
+            echo "Release $VERSION already exists, skipping."
+          else
+            COMMIT_MSG=$(git log -1 --pretty=%B)
+            gh release create "$VERSION" --title "$VERSION" --notes "$COMMIT_MSG"
+          fi
