@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "GTS NR1 Utils 1.0.1",
-  "description": "Development build - some utils to make development a bit easier",
-  "version": "1.0.1",
+  "name": "GTS NR1 Utils",
+  "description": "GTS utilities for NR1",
+  "version": "1.2",
   "permissions": [
     "webNavigation",
     "tabs",
