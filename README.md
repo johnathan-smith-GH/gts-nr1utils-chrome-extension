@@ -11,7 +11,7 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 - **Live Request Monitoring** — Requests appear with a pending indicator when fired and update to success/error/timeout when the response arrives, with response timing.
 - **Error & Timeout Detection** — Errors are flagged with red status indicators and banners. Timeout errors are detected and filterable separately.
 - **Multi-Account Detection** — Warns when results span multiple account IDs, which may indicate misconfiguration.
-- **Owning Team Identification** — Extracts the owning team from response metadata for faster escalation.
+- **Owning Team Identification** — Extracts and displays the owning team when an `owningTeam` field is found in the JSON response, for faster escalation. This banner only appears when the field is present — not all responses include it.
 - **Search & Filter** — Full-text search across queries, variables, and responses. Filter by errors only or timeouts only.
 - **Export** — Select results and export as clean JSON with full context (query, variables, response, timing, metadata).
 - **Debug Mode** — Displays platform info (version, region, user ID, account ID), subscribed nerdpack details, and current nerdlet metadata. Updates on SPA navigation.
