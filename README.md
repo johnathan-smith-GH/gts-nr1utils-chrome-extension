@@ -1,6 +1,6 @@
 # GTS NR1 Utils Chrome Extension
 
-A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and NRQL requests from the New Relic platform and gives easy access to New Relic's Debug Mode. Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 debug panel, and information scattered across the New Relic UI into a single side panel.
+A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and NRQL requests from the New Relic platform and gives easy access to New Relic's Debug Mode. Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 Debug Mode panel, and information scattered across the New Relic UI into a single side panel.
 
 **Version:** 1.4
 
@@ -8,9 +8,9 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 
 - **NerdGraph Request Capture** — Intercepts all GraphQL queries and mutations, extracts query names, variables, and full responses.
 - **NRQL Request Capture** — Captures direct NRQL requests and extracts embedded NRQL queries from GraphQL payloads.
-- **Live Request Monitoring** — Requests appear with a pending indicator when fired and update to success/error/timeout when the response arrives using color coding, along with response timing.
-- **Error & Timeout Detection** — Errors are flagged with red status indicators and banners. Timeout errors are detected and filterable separately.
-- **Multi-Account Detection** — Warns when NRQL is querying more than one account ID, which can give insight into visualizations that are cross-account querying and help identify a customer user's lack of permissions across all involved accounts.
+- **Live Request Monitoring** — Requests appear with a pending indicator when fired and update to success/error/timeout along with response timing.
+- **Error & Timeout Detection** — Errors are flagged with red status indicators and banners. Timeouts are flagged with red status indicators.
+- **Multi-Account Detection** — Warns when NRQL is querying more than one account ID, which can give insight into visualizations that are querying more than one account and help identify a customer user's lack of access to all involved accounts.
 - **Owning Team Identification** — Extracts and displays the owning team when an `owningTeam` field is found in the JSON response, for faster escalation. This banner only appears when the field is present — not all responses include it.
 - **Search & Filter** — Full-text search across queries, variables, and responses. Filter by errors only or timeouts only.
 - **Export** — Select results and export as clean JSON with full context (query, variables, response, timing, metadata).
@@ -24,15 +24,13 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 4. Click **Load unpacked** and select the root directory of this project.
 5. The GTS NR1 Utils icon will appear in your Chrome toolbar.
 
-After installing, refresh any already-open New Relic tabs for request capturing to begin. New tabs opened after installation work automatically.
-
 ## Usage
 
-1. Navigate to any New Relic page (`*.newrelic.com`).
-2. Click the extension icon to open the side panel.
-3. Use the tabs to switch between **NerdGraph**, **NRQL**, and **Debug Mode**.
-4. Click any captured request in the left panel to view its details on the right.
-5. Use the checkboxes to select results, then click **Export** to save as JSON.
+1. After installing, Click the extension icon to open the side panel.
+2. Refresh any already-open New Relic page (`*.newrelic.com`) for request capturing to begin.
+4. Use the tabs to switch between **NerdGraph**, **NRQL**, and **Debug Mode**.
+5. Click any captured request in the left panel to view its details on the right.
+6. Use the checkboxes to select results, then click **Export** to save as JSON if desired.
 
 ## Architecture
 
