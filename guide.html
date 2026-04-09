@@ -121,7 +121,7 @@
     <h3>Key Benefits for Technical Support</h3>
     <ul>
       <li><strong>See errors immediately</strong> — Failed requests surface with red status indicators and error banners at the top of the detail view. No scrolling through JSON to find error messages.</li>
-      <li><strong>Identify owning teams</strong> — When a NerdGraph query errors, the extension automatically extracts and displays the owning team from the response, so you know who to escalate to without digging through the response payload.</li>
+      <li><strong>Identify owning teams</strong> — When an <code>owningTeam</code> field is found in the JSON response, the extension automatically extracts and displays it, so you know who to escalate to without digging through the response payload. This banner will not appear if the response does not contain owning team information.</li>
       <li><strong>Spot slow queries in real time</strong> — Pending requests appear with a live timer the moment they fire. You can see which queries are taking longest before they even complete.</li>
       <li><strong>Detect cross-account queries</strong> — The extension flags when results are querying multiple account IDs, which can indicate misconfiguration or unexpected cross-account behavior.</li>
       <li><strong>Capture everything on page load</strong> — The extension intercepts requests from the moment the page starts loading, before you could even open DevTools. Nothing is missed.</li>
@@ -184,7 +184,7 @@
     <h3>Banners</h3>
     <p>When applicable, information banners appear at the top of the detail view in the following order:</p>
     <ul>
-      <li><strong>Owning Team</strong> (blue left border) — Shows the team responsible for the query, found by searching the response for an <code>owningTeam</code> field.</li>
+      <li><strong>Owning Team</strong> (blue left border) — Shows the team responsible for the query, extracted from the <code>owningTeam</code> field in the JSON response. This banner only appears when the field is present in the response — not all responses include owning team information.</li>
       <li><strong>Account IDs Being Queried</strong> (green left border) — Lists the account IDs found in the response's <code>account_ids</code> arrays.</li>
       <li><strong>Error</strong> (red left border) — Displays error messages from the response, making them immediately visible without scrolling.</li>
     </ul>
