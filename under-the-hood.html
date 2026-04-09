@@ -58,23 +58,42 @@
     td { padding: 8px 12px; }
     tr { border-bottom: 1px solid #e8e8e8; }
     tr:last-child { border-bottom: none; }
+    .back-btn-wrapper {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .back-arrow {
+      color: #5b8def;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    @media (prefers-color-scheme: dark) { .back-arrow { color: #7aa8f7; } }
     .back-btn {
       display: inline-block;
       padding: 6px 16px;
       border-radius: 6px;
       font-size: 12px;
       font-weight: 600;
-      background-color: #d4a017;
+      background-color: #2563eb;
       color: #fff;
       text-decoration: none;
-      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
       transition: background-color 150ms ease;
     }
-    .back-btn:hover { background-color: #b8890f; }
+    .back-btn:hover { background-color: #1d4ed8; }
   </style>
 </head>
 <body>
-  <a class="back-btn" href="guide.html">Back to User Guide</a>
+  <div class="back-btn-wrapper">
+    <span class="back-arrow">&#8592;</span>
+    <a class="back-btn" href="guide.html">Back to User Guide</a>
+  </div>
 
   <h1>Under The Hood</h1>
   <p class="subtitle">This section is intended for engineers who need to debug, maintain, or extend the extension. It covers the architecture, data flow, and implementation details behind each feature.</p>
