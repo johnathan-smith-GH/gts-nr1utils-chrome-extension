@@ -1,16 +1,16 @@
 # GTS NR1 Utils Chrome Extension
 
-A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and NRQL requests from the New Relic platform. Consolidates troubleshooting workflows that typically require juggling DevTools, the NR1 debug panel, and the NerdGraph API Explorer into a single side panel.
+A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and NRQL requests from the New Relic platform and gives easy access to New Relic's Debug Mode. Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 debug panel, and information scattered across the New Relic UI into a single side panel.
 
-**Version:** 1.2
+**Version:** 1.3
 
 ## Features
 
-- **NerdGraph Request Capture** — Intercepts all GraphQL queries and mutations, extracts query names, variables, and full responses including errors and owning team metadata.
+- **NerdGraph Request Capture** — Intercepts all GraphQL queries and mutations, extracts query names, variables, and full responses.
 - **NRQL Request Capture** — Captures direct NRQL requests and extracts embedded NRQL queries from GraphQL payloads.
-- **Live Request Monitoring** — Requests appear with a pending indicator when fired and update to success/error/timeout when the response arrives, with response timing.
+- **Live Request Monitoring** — Requests appear with a pending indicator when fired and update to success/error/timeout when the response arrives using color coding, along with response timing.
 - **Error & Timeout Detection** — Errors are flagged with red status indicators and banners. Timeout errors are detected and filterable separately.
-- **Multi-Account Detection** — Warns when results span multiple account IDs, which may indicate misconfiguration.
+- **Multi-Account Detection** — Warns when NRQL is querying more than one account ID, which can give insight into visualizations that are cross-account querying and help identify a customer user's lack of permissions across all involved accounts.
 - **Owning Team Identification** — Extracts and displays the owning team when an `owningTeam` field is found in the JSON response, for faster escalation. This banner only appears when the field is present — not all responses include it.
 - **Search & Filter** — Full-text search across queries, variables, and responses. Filter by errors only or timeouts only.
 - **Export** — Select results and export as clean JSON with full context (query, variables, response, timing, metadata).
