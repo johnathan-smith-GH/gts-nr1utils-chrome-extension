@@ -519,4 +519,4 @@ const App = props => {
   }));
 };
 
-export default /*#__PURE__*/React.memo(connect(mapStateToProps, mapDispatchToProps)(App));
+export default connect(mapStateToProps, mapDispatchToProps)(App);
