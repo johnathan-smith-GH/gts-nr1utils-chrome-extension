@@ -65,11 +65,14 @@ function findOwningTeam(obj) {
 
 /**
  * Match a NRQL request to a dashboard widget by comparing query text.
+ * Uses exact match first, then falls back to substring containment.
  * Returns the matched widget object or null.
  */
 function matchWidgetByNrql(request, widgetMap) {
   if (!widgetMap || !widgetMap.length || !request || !request.query) return null;
   var queryNormalized = request.query.replace(/\s+/g, ' ').trim().toLowerCase();
+
+  // Pass 1: exact match
   for (var i = 0; i < widgetMap.length; i++) {
     var widget = widgetMap[i];
     if (!widget.nrqlQueries) continue;
@@ -78,6 +81,17 @@ function matchWidgetByNrql(request, widgetMap) {
       if (queryNormalized === widgetNrql) return widget;
     }
   }
+
+  // Pass 2: one contains the other (handles NR1 runtime alias modifications)
+  for (var i2 = 0; i2 < widgetMap.length; i2++) {
+    var widget2 = widgetMap[i2];
+    if (!widget2.nrqlQueries) continue;
+    for (var j2 = 0; j2 < widget2.nrqlQueries.length; j2++) {
+      var widgetNrql2 = widget2.nrqlQueries[j2].replace(/\s+/g, ' ').trim().toLowerCase();
+      if (queryNormalized.indexOf(widgetNrql2) !== -1 || widgetNrql2.indexOf(queryNormalized) !== -1) return widget2;
+    }
+  }
+
   return null;
 }
 
@@ -109,7 +123,15 @@ const RequestsPage = props => {
   const resultsRef = useRef(null);
 
   const filteredRequests = logFilter.length ? logData.filter(function (request) {
-    return JSON.stringify(request).toLowerCase().includes(logFilter.toLowerCase());
+    var filterLower = logFilter.toLowerCase();
+    if (JSON.stringify(request).toLowerCase().includes(filterLower)) return true;
+    // Also search matched widget title/page
+    var matched = matchWidgetByNrql(request, widgetMap);
+    if (matched) {
+      var widgetStr = (matched.title + ' ' + matched.pageName + ' ' + matched.widgetId).toLowerCase();
+      if (widgetStr.includes(filterLower)) return true;
+    }
+    return false;
   }) : logData;
   var visibleRequests = filteredRequests;
   if (showOnlyErrors) {
