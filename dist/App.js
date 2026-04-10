@@ -29,7 +29,8 @@ const mapStateToProps = state => ({
   debugPlatformInfo: state.debugPlatformInfo,
   debugNerdpacks: state.debugNerdpacks,
   debugCurrentNerdletId: state.debugCurrentNerdletId,
-  debugEntityGuid: state.debugEntityGuid
+  debugEntityGuid: state.debugEntityGuid,
+  widgetMap: state.widgetMap
 });
 
 const mapDispatchToProps = {
@@ -55,8 +56,50 @@ const mapDispatchToProps = {
   setDebugPlatformInfo: info => actions.setDebugPlatformInfo(info),
   setDebugNerdpacks: packs => actions.setDebugNerdpacks(packs),
   setDebugCurrentNerdlet: data => actions.setDebugCurrentNerdlet(data),
-  resetDebugInfo: () => actions.resetDebugInfo()
+  resetDebugInfo: () => actions.resetDebugInfo(),
+  setWidgetMap: map => actions.setWidgetMap(map)
 };
+
+/**
+ * Extract a widget map from a GetDashboardEntityQuery response.
+ * Returns an array of { widgetId, title, nrqlQueries: [string] } objects.
+ */
+function extractWidgetMapFromDashboard(graphqlRequests) {
+  var widgets = [];
+  for (var i = 0; i < graphqlRequests.length; i++) {
+    var req = graphqlRequests[i];
+    if (!req.name || req.name.indexOf('DashboardEntity') === -1 && req.name.indexOf('GetDashboard') === -1) continue;
+    var resp = req.response;
+    if (!resp || !resp.data) continue;
+    var entity = resp.data.actor && resp.data.actor.entity;
+    if (!entity || !entity.pages) continue;
+    for (var pi = 0; pi < entity.pages.length; pi++) {
+      var page = entity.pages[pi];
+      var pageName = page.name || '';
+      if (!page.widgets) continue;
+      for (var wi = 0; wi < page.widgets.length; wi++) {
+        var w = page.widgets[wi];
+        var raw = w.rawConfiguration || {};
+        var nrqlQueries = [];
+        if (raw.nrqlQueries && Array.isArray(raw.nrqlQueries)) {
+          for (var qi = 0; qi < raw.nrqlQueries.length; qi++) {
+            if (raw.nrqlQueries[qi].query) nrqlQueries.push(raw.nrqlQueries[qi].query);
+          }
+        }
+        if (nrqlQueries.length > 0 || w.title) {
+          widgets.push({
+            widgetId: w.id,
+            title: w.title || '',
+            pageName: pageName,
+            nrqlQueries: nrqlQueries,
+            layout: w.layout || null
+          });
+        }
+      }
+    }
+  }
+  return widgets;
+}
 
 const App = props => {
   const {
@@ -115,6 +158,12 @@ const App = props => {
         const nrqlFromGraphql = extractNrqlFromGraphql(graphqlRequests);
         if (nrqlFromGraphql.length > 0) {
           updateNrqlRequests(nrqlFromGraphql);
+        }
+
+        // Extract widget map from dashboard entity queries
+        var legacyDashboardWidgets = extractWidgetMapFromDashboard(graphqlRequests);
+        if (legacyDashboardWidgets.length > 0) {
+          props.setWidgetMap(legacyDashboardWidgets);
         }
       }
 
@@ -244,6 +293,12 @@ const App = props => {
         if (nrqlFromGraphql.length > 0) {
           updateNrqlRequests(nrqlFromGraphql);
         }
+
+        // Extract widget map from dashboard entity queries
+        var dashboardWidgets = extractWidgetMapFromDashboard(graphqlRequests);
+        if (dashboardWidgets.length > 0) {
+          props.setWidgetMap(dashboardWidgets);
+        }
       }
 
       if (url.pathname.match('nrql')) {
@@ -345,7 +400,8 @@ const App = props => {
     debugPlatformInfo,
     debugNerdpacks,
     debugCurrentNerdletId,
-    debugEntityGuid
+    debugEntityGuid,
+    widgetMap
   } = props;
   const currentLogData = currentPage === PageName.GRAPHQL_REQUESTS ? gqlRequests
     : currentPage === PageName.NRQL_REQUESTS ? nrqlRequests
@@ -432,7 +488,8 @@ const App = props => {
     selectedIndices: selectedIndices,
     toggleSelectedIndex: toggleSelectedIndex,
     selectAllVisible: selectAllVisible,
-    clearSelectedIndices: clearSelectedIndices
+    clearSelectedIndices: clearSelectedIndices,
+    widgetMap: widgetMap
   }), currentPage === PageName.DEBUG_INFO && /*#__PURE__*/React.createElement(DebugInfoPage, {
     debugPlatformInfo: debugPlatformInfo,
     debugNerdpacks: debugNerdpacks,

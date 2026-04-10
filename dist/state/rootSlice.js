@@ -1,6 +1,6 @@
 import { createSlice } from '../../snowpack/pkg/@reduxjs/toolkit.js';
 import { PageName } from '../types.js';
-import { setCurrentPage, setCurrentQueryIdx, setPreserveLog, setWindowHeight, setLogFilter, updateGqlRequests, clearLog, clearAllRequests, updateNrqlRequests, setUrlParameters, setShowVerbose, setModifiedUrlParameters, setShowTiming, setShowOnlyErrors, setShowOnlyTimeouts, setDebugPlatformInfo, setDebugNerdpacks, setDebugCurrentNerdlet, resetDebugInfo, toggleSelectedIndex, selectAllVisible, clearSelectedIndices, addPendingGqlRequest, addPendingNrqlRequest, completeRequest } from './actionCreators.js';
+import { setCurrentPage, setCurrentQueryIdx, setPreserveLog, setWindowHeight, setLogFilter, updateGqlRequests, clearLog, clearAllRequests, updateNrqlRequests, setUrlParameters, setShowVerbose, setModifiedUrlParameters, setShowTiming, setShowOnlyErrors, setShowOnlyTimeouts, setDebugPlatformInfo, setDebugNerdpacks, setDebugCurrentNerdlet, resetDebugInfo, toggleSelectedIndex, selectAllVisible, clearSelectedIndices, addPendingGqlRequest, addPendingNrqlRequest, completeRequest, setWidgetMap } from './actionCreators.js';
 const showVerbose = localStorage.getItem('showVerbose');
 const preserveLog = localStorage.getItem('preserveLog');
 const showTiming = localStorage.getItem('showTiming');
@@ -21,7 +21,8 @@ const initialState = {
   debugNerdpacks: [],
   debugCurrentNerdletId: null,
   debugEntityGuid: null,
-  selectedIndices: []
+  selectedIndices: [],
+  widgetMap: []
 };
 const rootSlice = createSlice({
   name: 'root',
@@ -51,7 +52,8 @@ const rootSlice = createSlice({
     clearSelectedIndices,
     addPendingGqlRequest,
     addPendingNrqlRequest,
-    completeRequest
+    completeRequest,
+    setWidgetMap
   }
 });
 export default rootSlice;

@@ -63,6 +63,24 @@ function findOwningTeam(obj) {
   return null;
 }
 
+/**
+ * Match a NRQL request to a dashboard widget by comparing query text.
+ * Returns the matched widget object or null.
+ */
+function matchWidgetByNrql(request, widgetMap) {
+  if (!widgetMap || !widgetMap.length || !request || !request.query) return null;
+  var queryNormalized = request.query.replace(/\s+/g, ' ').trim().toLowerCase();
+  for (var i = 0; i < widgetMap.length; i++) {
+    var widget = widgetMap[i];
+    if (!widget.nrqlQueries) continue;
+    for (var j = 0; j < widget.nrqlQueries.length; j++) {
+      var widgetNrql = widget.nrqlQueries[j].replace(/\s+/g, ' ').trim().toLowerCase();
+      if (queryNormalized === widgetNrql) return widget;
+    }
+  }
+  return null;
+}
+
 const RequestsPage = props => {
   const {
     logData,
@@ -80,7 +98,8 @@ const RequestsPage = props => {
     selectedIndices,
     toggleSelectedIndex,
     selectAllVisible,
-    clearSelectedIndices
+    clearSelectedIndices,
+    widgetMap
   } = props;
   const [jsonSearch, setJsonSearch] = React.useState('');
   const [matchCount, setMatchCount] = React.useState(0);
@@ -257,16 +276,23 @@ const RequestsPage = props => {
   }, "Owning Team:"), /*#__PURE__*/React.createElement("span", {
     className: "App-owningTeamValue"
   }, findOwningTeam(currentQuery))),
-  currentQuery.widgetHints && /*#__PURE__*/React.createElement("div", {
-    className: "App-widgetHintsBanner"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "App-widgetHintsLabel"
-  }, "Widget Context:"), Object.keys(currentQuery.widgetHints).map(function (key) {
-    return /*#__PURE__*/React.createElement("span", {
-      key: key,
+  (function () {
+    var matched = matchWidgetByNrql(currentQuery, widgetMap);
+    if (!matched) return null;
+    return /*#__PURE__*/React.createElement("div", {
+      className: "App-widgetHintsBanner"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "App-widgetHintsLabel"
+    }, "Dashboard Widget:"), /*#__PURE__*/React.createElement("span", {
       className: "App-widgetHintsItem"
-    }, /*#__PURE__*/React.createElement("strong", null, key + ': '), String(currentQuery.widgetHints[key]));
-  })),
+    }, /*#__PURE__*/React.createElement("strong", null, "Title: "), matched.title || '(untitled)'),
+    matched.pageName && /*#__PURE__*/React.createElement("span", {
+      className: "App-widgetHintsItem"
+    }, /*#__PURE__*/React.createElement("strong", null, "Page: "), matched.pageName),
+    /*#__PURE__*/React.createElement("span", {
+      className: "App-widgetHintsItem"
+    }, /*#__PURE__*/React.createElement("strong", null, "Widget ID: "), matched.widgetId));
+  })(),
   findAccountIds(currentQuery).length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "App-accountIdBanner"
   }, /*#__PURE__*/React.createElement("span", {
