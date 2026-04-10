@@ -150,29 +150,65 @@
 
     var targetElement = null;
 
-    // Strategy 1: Find by widget title text in the DOM
+    // Strategy 1: Find by widget title text in the DOM (leaf nodes)
     if (widgetTitle) {
-      // Look for elements that contain the widget title
-      // Dashboard widgets typically have their title in a heading or span
-      var allElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, span, div, p');
+      var allElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, span, div, p, a');
       var titleLower = widgetTitle.toLowerCase().trim();
       for (var i = 0; i < allElements.length; i++) {
         var el = allElements[i];
         var text = (el.textContent || '').trim().toLowerCase();
-        // Match exact title text (not partial matches from parent containers)
         if (text === titleLower && el.children.length === 0) {
           targetElement = el;
           break;
         }
       }
 
-      // If exact leaf-node match didn't work, try innerText match on small elements
+      // Strategy 2: innerText match on small elements
       if (!targetElement) {
         for (var j = 0; j < allElements.length; j++) {
           var el2 = allElements[j];
           var innerText = (el2.innerText || '').trim().toLowerCase();
           if (innerText === titleLower && el2.offsetHeight < 100) {
             targetElement = el2;
+            break;
+          }
+        }
+      }
+
+      // Strategy 3: Search via React fiber tree for widget title in props
+      if (!targetElement) {
+        var gridItems = document.querySelectorAll('[class*="grid"], [class*="widget"], [class*="Widget"], [class*="card"], [class*="Card"], [data-testid]');
+        for (var k = 0; k < gridItems.length; k++) {
+          var gridEl = gridItems[k];
+          var fiberKey = Object.keys(gridEl).find(function (key) {
+            return key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$');
+          });
+          if (!fiberKey) continue;
+          var fiber = gridEl[fiberKey];
+          var current = fiber;
+          var maxDepth = 15;
+          while (current && maxDepth-- > 0) {
+            if (current.memoizedProps) {
+              var props = current.memoizedProps;
+              var propTitle = props.title || props.name || props.widgetTitle || '';
+              if (typeof propTitle === 'string' && propTitle.toLowerCase().trim() === titleLower) {
+                targetElement = gridEl;
+                break;
+              }
+            }
+            current = current.return;
+          }
+          if (targetElement) break;
+        }
+      }
+
+      // Strategy 4: Use TreeWalker to find title text anywhere in the DOM
+      if (!targetElement) {
+        var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        while (walker.nextNode()) {
+          var node = walker.currentNode;
+          if (node.textContent.trim().toLowerCase() === titleLower) {
+            targetElement = node.parentElement;
             break;
           }
         }
