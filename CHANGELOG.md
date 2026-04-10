@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.1
+- Fix Locate on Page for lazy-loaded widgets by moving highlight logic to content script
+- Add scroll-to-lazy-load: incrementally scrolls dashboard to trigger widget rendering, then highlights
+- Add 8 DOM search strategies with debug logging for diagnosing title-matching failures
+- Add fallback tab routing when active tab message delivery fails
+- Update dashboard notice to mention 'Locate on page' as an option for loading gray entries
+- Rename 'Account IDs Being Queried' to 'Account ID Identifiers Being Queried'
+
 ## 1.8.0
 - Add dashboard widget correlation: match NRQL results to widgets by query text
 - Add "Locate on Page" button to scroll to and highlight matched widgets
