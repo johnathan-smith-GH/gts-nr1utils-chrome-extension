@@ -98,13 +98,25 @@
   <h1>Under The Hood</h1>
   <p class="subtitle">This section is intended for engineers who need to debug, maintain, or extend the extension. It covers the architecture, data flow, and implementation details behind each feature.</p>
 
+  <h3>Tech Stack</h3>
+  <div class="tech-section">
+    <ul>
+      <li><strong>React + Redux Toolkit</strong> — UI rendering and state management</li>
+      <li><strong>Snowpack</strong> — ESM-first build tooling (dependencies bundled in <code>snowpack/pkg/</code>)</li>
+      <li><strong>react-json-view</strong> — JSON rendering in the result detail panel</li>
+      <li><strong>Chrome Manifest V3</strong> — Service worker, content scripts (isolated + main world), side panel API</li>
+      <li><strong>CSS Custom Highlight API</strong> — Search-within-result highlighting</li>
+      <li><strong>File System Access API</strong> — Export via native Save As dialog</li>
+    </ul>
+  </div>
+
   <h3>Architecture Overview</h3>
   <div class="tech-section">
     <p>The extension uses Chrome's Manifest V3 architecture with four main components:</p>
     <ul>
       <li><strong><code>early-wrap.js</code></strong> — Injected into the page's main world via manifest (<code>world: "MAIN"</code>, <code>run_at: "document_start"</code>). Wraps <code>window.fetch</code> and <code>XMLHttpRequest.prototype.open/send</code> before any page JavaScript executes. Sends two-phase messages via <code>window.postMessage</code>.</li>
       <li><strong><code>page-script.js</code></strong> — Loaded asynchronously into the main world via a <code>&lt;script src&gt;</code> tag injected by <code>content.js</code>. Handles debug info collection (platform info, nerdpack metadata, nerdlet navigation). Skips fetch/XHR wrapping if <code>early-wrap.js</code> already did it (checks <code>window.__NR1_UTILS_EARLY_WRAP__</code>).</li>
-      <li><strong><code>content.js</code></strong> — Runs in the isolated world at <code>document_start</code>. Bridges between the main world (page scripts) and the service worker via <code>window.addEventListener('message')</code> and <code>chrome.runtime.sendMessage</code>. Also detects SPA navigation by wrapping <code>history.pushState/replaceState</code>.</li>
+      <li><strong><code>content.js</code></strong> — Runs in the isolated world at <code>document_start</code>. Bridges between the main world (page scripts) and the service worker via <code>window.addEventListener('message')</code> and <code>chrome.runtime.sendMessage</code>. Detects SPA navigation by wrapping <code>history.pushState/replaceState</code>. Also executes the "Locate on Page" widget highlight logic directly in the DOM (8 search strategies + scroll-to-lazy-load).</li>
       <li><strong><code>background.js</code></strong> — Service worker. Routes messages between content scripts and the side panel via a Chrome runtime port (<code>nr1-utils-panel</code>). Buffers requests, caches debug info, and manages nerdpack metadata fetching via <code>chrome.scripting.executeScript</code>.</li>
     </ul>
     <p><strong>Message flow:</strong> <code>early-wrap.js</code> (main world) → <code>window.postMessage</code> → <code>content.js</code> (isolated world) → <code>chrome.runtime.sendMessage</code> → <code>background.js</code> (service worker) → <code>port.postMessage</code> → side panel (<code>App.js</code>)</p>

@@ -4,7 +4,7 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 
 Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 Debug Mode panel, and information scattered across the New Relic UI into a single side panel.
 
-**Version:** 1.8.3
+**Version:** 1.8.4
 
 ## Features
 
@@ -52,7 +52,7 @@ The extension uses Chrome Manifest V3 with a multi-layer message passing archite
 ```
 early-wrap.js (main world, wraps fetch/XHR at document_start)
   ↓ window.postMessage
-content.js (isolated world, bridges main world ↔ service worker)
+content.js (isolated world, bridges main world ↔ service worker, widget highlighting)
   ↓ chrome.runtime.sendMessage
 background.js (service worker, routes messages + buffers up to 1,000 requests)
   ↓ port.postMessage
@@ -61,23 +61,25 @@ Side Panel UI (React + Redux)
 
 Request interception is two-phase: a `REQUEST_START` message fires immediately when a request is made (creating a pending entry in the UI), and a `REQUEST_COMPLETE` message fires when the response arrives (updating status, timing, and parsed data).
 
+For full implementation details, see the **Under The Hood** guide accessible from within the extension's User Guide.
+
 ## File Structure
 
 ```
 ├── manifest.json                # Manifest V3 configuration
-├── background.js                # Service worker (message routing, request buffering)
-├── content.js                   # Content script (main world ↔ service worker bridge)
-├── page-script.js               # Page script (collects debug/platform info)
-├── early-wrap.js                # Early fetch/XHR interception (document_start)
+├── background.js                # Service worker (message routing, request buffering, fallback tab routing)
+├── content.js                   # Content script (message bridge, SPA detection, widget highlight + scroll-to-lazy-load)
+├── page-script.js               # Page script (debug/platform info collection, legacy widget highlight)
+├── early-wrap.js                # Early fetch/XHR interception (document_start), call stack capture
 ├── index.html / sidepanel.html  # Entry points
 ├── guide.html                   # User guide
-├── under-the-hood.html          # Technical architecture documentation
+├── under-the-hood.html          # Technical architecture documentation (full details on all internals)
 ├── icons/                       # Extension icons (16, 48, 128px)
 ├── dist/                        # Built application
-│   ├── App.js                   # Main React component
-│   ├── components/              # UI components (Navigation, Log, LogEntry, etc.)
+│   ├── App.js                   # Main React component, request processing, widget map extraction
+│   ├── components/              # UI components (Navigation, Log, LogEntry, RequestsPage, DebugInfoPage)
 │   ├── state/                   # Redux store, slice, and action creators
-│   └── utils/                   # GraphQL/NRQL parsing and helper utilities
+│   └── utils/                   # GraphQL/NRQL parsing, widget hint extraction, helper utilities
 └── snowpack/                    # Snowpack-bundled dependencies
 ```
 

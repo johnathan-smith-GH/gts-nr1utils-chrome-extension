@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.4
+- Reconcile README and Under The Hood technical sections: README is now a concise quick-reference with pointer to Under The Hood for full details
+- Add Tech Stack section to Under The Hood (React, Redux Toolkit, Snowpack, react-json-view, CSS Custom Highlight API, File System Access API)
+- Update README file structure descriptions to reflect current roles (content.js widget highlight, early-wrap.js call stack capture, etc.)
+- Update Under The Hood Architecture Overview to document content.js widget highlight role
+
 ## 1.8.3
 - Update User Guide: add Dashboard Widget Placeholders section, Preserve Log, Keyboard Navigation, scroll-to-lazy-load details for Locate on Page
 - Update Under The Hood: rewrite Locate on Page section (content.js architecture, 8 DOM strategies, scroll-to-lazy-load, fallback tab routing, debug logging), add Widget Placeholders and Widget Map Management sections
