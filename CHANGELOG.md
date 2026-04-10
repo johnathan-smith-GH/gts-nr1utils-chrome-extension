@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.6
+- Improve status indicator documentation in README and User Guide to show all four states (pending, success, error, timeout) with both query name and timing pill colors
+
 ## 1.5
 - Add colored status badges to README for Live Request Monitoring indicators
 

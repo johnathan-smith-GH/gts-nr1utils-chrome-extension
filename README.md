@@ -4,16 +4,17 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 
 Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 Debug Mode panel, and information scattered across the New Relic UI into a single side panel.
 
-**Version:** 1.5
+**Version:** 1.6
 
 ## Features
 
 - **NerdGraph Request Capture** — Intercepts all GraphQL queries and mutations, extracts query names, variables, and full responses.
 - **NRQL Request Capture** — Captures direct NRQL requests and extracts embedded NRQL queries from GraphQL payloads.
-- **Live Request Monitoring** — Requests appear with a pending indicator when fired and update to success/error/timeout along with response timing.
-  - ![PENDING](https://img.shields.io/badge/PENDING-eab308?style=flat-square) Request is in flight. The timer counts up in real time showing elapsed time.
-  - ![RESPONSE TIME](https://img.shields.io/badge/RESPONSE_TIME-22c55e?style=flat-square) Request completed successfully. Shows the total response time.
-  - ![RESPONSE TIME](https://img.shields.io/badge/RESPONSE_TIME-ef4444?style=flat-square) Request returned errors or timed out.
+- **Live Request Monitoring** — Requests appear with a pending indicator when fired and update to success/error/timeout along with response timing. Each request shows a query name pill and a timing pill:
+  - ![QUERY NAME](https://img.shields.io/badge/QUERY_NAME-eab308?style=flat-square) ![PENDING](https://img.shields.io/badge/PENDING-eab308?style=flat-square) — Request in flight. Timer counts up in real time with a pulsing animation.
+  - ![QUERY NAME](https://img.shields.io/badge/QUERY_NAME-2B8C0E?style=flat-square) ![RESPONSE TIME](https://img.shields.io/badge/RESPONSE_TIME-2B8C0E?style=flat-square) — Request completed successfully with no errors.
+  - ![QUERY NAME](https://img.shields.io/badge/QUERY_NAME-FF0000?style=flat-square) ![RESPONSE TIME](https://img.shields.io/badge/RESPONSE_TIME-FF0000?style=flat-square) — Response received but contained errors.
+  - ![QUERY NAME](https://img.shields.io/badge/QUERY_NAME-FF0000?style=flat-square) ![RESPONSE TIME](https://img.shields.io/badge/RESPONSE_TIME-FF0000?style=flat-square) — Request timed out (error message contains "timeout").
 - **Error & Timeout Detection** — Errors are flagged with red status indicators and banners. Timeouts are flagged with red status indicators.
 - **Multi-Account Detection** — Warns when NRQL is querying more than one account ID, which can give insight into visualizations that are querying more than one account and help identify a customer user's lack of access to all involved accounts.
 - **Owning Team Identification** — Extracts and displays the owning team when an `owningTeam` field is found in the JSON response, for faster escalation. This banner only appears when the field is present — not all responses include it.

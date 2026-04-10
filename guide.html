@@ -147,11 +147,12 @@
   <h2>Request List (Left Panel)</h2>
   <div class="section">
     <h3>Live Request Status</h3>
-    <p>Requests appear immediately when fired, with a live status indicator:</p>
+    <p>Requests appear immediately when fired, with a live status indicator. Each request shows a query name pill and a timing pill:</p>
     <ul>
-      <li><span class="pill pill-yellow">PENDING</span> — Request is in flight. The timer counts up in real time showing elapsed time.</li>
-      <li><span class="pill pill-green">RESPONSE TIME</span> — Request completed successfully. Shows the total response time.</li>
-      <li><span class="pill pill-red">RESPONSE TIME</span> — Request returned errors or timed out.</li>
+      <li><span class="pill pill-yellow">QUERY NAME</span> <span class="pill pill-yellow">PENDING</span> — Request in flight. Timer counts up in real time with a pulsing animation.</li>
+      <li><span class="pill pill-green">QUERY NAME</span> <span class="pill pill-green">RESPONSE TIME</span> — Request completed successfully with no errors.</li>
+      <li><span class="pill pill-red">QUERY NAME</span> <span class="pill pill-red">RESPONSE TIME</span> — Response received but contained errors.</li>
+      <li><span class="pill pill-red">QUERY NAME</span> <span class="pill pill-red">RESPONSE TIME</span> — Request timed out (error message contains "timeout").</li>
     </ul>
 
     <h3>Sorting</h3>
