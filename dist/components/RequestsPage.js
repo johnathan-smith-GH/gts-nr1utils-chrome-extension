@@ -258,22 +258,19 @@ const RequestsPage = props => {
     if (!widgetMap || !widgetMap.length) return null;
     var inaccessible = widgetMap.filter(function (w) { return w.inaccessible; });
     if (inaccessible.length === 0) return null;
-    var accountIds = [];
-    for (var ai = 0; ai < inaccessible.length; ai++) {
-      var acctId = inaccessible[ai].dashboardAccountId;
-      if (acctId != null && accountIds.indexOf(String(acctId)) === -1) accountIds.push(String(acctId));
-    }
     return /*#__PURE__*/React.createElement("div", {
       className: "App-inaccessibleBanner"
     }, /*#__PURE__*/React.createElement("span", {
       className: "App-inaccessibleLabel"
-    }, "\u26A0\uFE0F " + inaccessible.length + " widget" + (inaccessible.length > 1 ? "s" : "") + " on this dashboard require access to account" + (accountIds.length > 1 ? "s" : "") + " you don't have permission to view:"),
+    }, "\u26A0\uFE0F " + inaccessible.length + " widget" + (inaccessible.length > 1 ? "s" : "") + " on this dashboard " + (inaccessible.length > 1 ? "were" : "was") + " added from an account the current user does not have access to. The source account and query details are hidden by the platform for inaccessible widgets."),
     /*#__PURE__*/React.createElement("span", {
       className: "App-inaccessibleAccounts"
-    }, accountIds.length > 0 ? "Account ID" + (accountIds.length > 1 ? "s" : "") + ": " + accountIds.join(", ") : "Account information unavailable"),
+    }, "Dashboard account: " + (inaccessible[0].dashboardAccountId || 'unknown') + " (accessible) \u2014 widget source account: unknown (not exposed by NerdGraph for inaccessible widgets)"),
     /*#__PURE__*/React.createElement("div", {
       className: "App-inaccessibleWidgets"
-    }, inaccessible.map(function (w) {
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "App-inaccessibleWidgetsHeading"
+    }, "Affected widgets:"), inaccessible.map(function (w) {
       return /*#__PURE__*/React.createElement("span", {
         key: w.widgetId,
         className: "App-inaccessibleWidgetName"
