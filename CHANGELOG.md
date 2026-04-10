@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5
+- Add colored status badges to README for Live Request Monitoring indicators
+
 ## 1.4
 - Fix Back to User Guide button: now fixed top-left (matching Under The Hood placement), blue color, with left arrow
 
