@@ -40,6 +40,7 @@ const clearLog = state => {
 
   if (state.currentPage === 'NRQL_REQUESTS') {
     state.nrqlRequests = [];
+    state.widgetMap = [];
   }
 
   state.currentQueryIdx = undefined;
