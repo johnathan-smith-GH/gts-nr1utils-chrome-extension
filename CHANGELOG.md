@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.8.5
+- Organize README Features into four categories: Request Capture & Monitoring, Dashboard Intelligence, Troubleshooting Context, Search/Filter & Export
+
 ## 1.8.4
 - Reconcile README and Under The Hood technical sections: README is now a concise quick-reference with pointer to Under The Hood for full details
 - Add Tech Stack section to Under The Hood (React, Redux Toolkit, Snowpack, react-json-view, CSS Custom Highlight API, File System Access API)

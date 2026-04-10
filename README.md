@@ -4,9 +4,11 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 
 Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 Debug Mode panel, and information scattered across the New Relic UI into a single side panel.
 
-**Version:** 1.8.4
+**Version:** 1.8.5
 
 ## Features
+
+### Request Capture & Monitoring
 
 - **NerdGraph Request Capture** — Intercepts all GraphQL queries and mutations, extracts query names, variables, and full responses.
 - **NRQL Request Capture** — Captures direct NRQL requests and extracts embedded NRQL queries from GraphQL payloads.
@@ -16,18 +18,27 @@ Consolidates troubleshooting workflows that typically require juggling browser d
   - ![QUERY](https://img.shields.io/badge/QUERY-FF0000?style=flat-square) ![RESPONSE TIME](https://img.shields.io/badge/RESPONSE_TIME-2B8C0E?style=flat-square) — Response received but contained errors. Timing stays green because a response was returned.
   - ![QUERY](https://img.shields.io/badge/QUERY-FF0000?style=flat-square) ![RESPONSE TIME](https://img.shields.io/badge/RESPONSE_TIME-FF0000?style=flat-square) — Request timed out (error message contains "timeout"). Both pills are red.
 - **Error & Timeout Detection** — Errors are flagged with red status indicators and banners. Timeouts are flagged with red status indicators.
-- **Multi-Account Detection** — Warns when NRQL is querying more than one account ID, which can give insight into visualizations that are querying more than one account and help identify a customer user's lack of access to all involved accounts.
-- **Owning Team Identification** — Extracts and displays the owning team when an `owningTeam` field is found in the JSON response, for faster escalation. This banner only appears when the field is present — not all responses include it.
-- **Search & Filter** — Full-text search across queries, variables, and responses. Filter by errors only or timeouts only.
+
+### Dashboard Intelligence
+
 - **Dashboard Widget Correlation** — Matches captured NRQL results to their corresponding dashboard widgets by comparing query text against the dashboard entity definition. Shows a purple "Dashboard Widget" banner with the widget title, page name, and widget ID. Widget names are also searchable in the filter.
 - **Locate on Page** — When a NRQL result matches a dashboard widget, a "Locate on Page" button scrolls to and highlights the widget on the page with a purple overlay. For widgets below the fold, the extension automatically scrolls the dashboard to trigger lazy rendering before highlighting.
 - **Dashboard Widget Placeholders** — Grey "defined" entries appear in the NRQL results for widget queries not yet captured as network requests. These are replaced with live results as widgets load via "Locate on Page" or manual scrolling.
 - **Inaccessible Widget Detection** — Detects dashboard widgets the user can't access and shows an amber banner listing affected widget names and directing to the dashboard owner for account identification.
+
+### Troubleshooting Context
+
+- **Multi-Account Detection** — Warns when NRQL is querying more than one account ID, which can give insight into visualizations that are querying more than one account and help identify a customer user's lack of access to all involved accounts.
+- **Owning Team Identification** — Extracts and displays the owning team when an `owningTeam` field is found in the JSON response, for faster escalation. This banner only appears when the field is present — not all responses include it.
 - **Source Component Tracing** — Captures call stacks at fetch intercept time to identify the React component that initiated a request, shown as a fallback "Source Component" banner when widget map matching is unavailable.
-- **Preserve Log** — Checkbox to persist captured requests across page navigations within the same tab, saved to localStorage.
-- **Keyboard Navigation** — Arrow Up/Down to navigate between requests, Enter to select.
-- **Export** — Select results and export as clean JSON with full context (query, variables, response, timing, metadata).
 - **Debug Mode** — Displays platform info (version, region, user ID, account ID), subscribed nerdpack details, and current nerdlet metadata. Updates on SPA navigation.
+
+### Search, Filter & Export
+
+- **Search & Filter** — Full-text search across queries, variables, and responses. Filter by errors only or timeouts only.
+- **Keyboard Navigation** — Arrow Up/Down to navigate between requests, Enter to select.
+- **Preserve Log** — Checkbox to persist captured requests across page navigations within the same tab, saved to localStorage.
+- **Export** — Select results and export as clean JSON with full context (query, variables, response, timing, metadata).
 
 ## Installation
 
