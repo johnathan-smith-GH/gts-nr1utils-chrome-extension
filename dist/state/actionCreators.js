@@ -175,7 +175,12 @@ const completeRequest = (state, action) => {
 };
 
 const setWidgetMap = (state, action) => {
-  state.widgetMap = action.payload;
+  // Merge new widgets with existing, deduplicating by widgetId
+  var existing = state.widgetMap || [];
+  var existingIds = {};
+  existing.forEach(function (w) { if (w.widgetId) existingIds[w.widgetId] = true; });
+  var newWidgets = action.payload.filter(function (w) { return !w.widgetId || !existingIds[w.widgetId]; });
+  state.widgetMap = existing.concat(newWidgets);
   return state;
 };
 
