@@ -197,6 +197,15 @@
       container = parent;
     }
 
+    // Find the scrollable parent (the dashboard's scroll container)
+    var scrollParent = container.parentElement;
+    while (scrollParent && scrollParent !== document.body) {
+      var overflow = window.getComputedStyle(scrollParent).overflowY;
+      if (overflow === 'auto' || overflow === 'scroll') break;
+      scrollParent = scrollParent.parentElement;
+    }
+    if (!scrollParent) scrollParent = document.documentElement;
+
     // Scroll the container into view
     container.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
@@ -242,6 +251,19 @@
         clearInterval(pollInterval);
         overlay.style.opacity = '1';
 
+        // Nudge the scroll container to trigger IntersectionObservers
+        // NR1 lazy-loads widget queries via IntersectionObserver which
+        // may not fire from programmatic scrollIntoView alone
+        try {
+          var savedScrollTop = scrollParent.scrollTop;
+          scrollParent.scrollTop = savedScrollTop + 1;
+          scrollParent.dispatchEvent(new Event('scroll', { bubbles: true }));
+          setTimeout(function () {
+            scrollParent.scrollTop = savedScrollTop;
+            scrollParent.dispatchEvent(new Event('scroll', { bubbles: true }));
+          }, 50);
+        } catch (e) {}
+
         // Fade out after 2 seconds
         setTimeout(function () {
           overlay.style.opacity = '0';
@@ -257,6 +279,16 @@
       clearInterval(pollInterval);
       positionOverlay();
       overlay.style.opacity = '1';
+      // Nudge scroll for safety timeout path too
+      try {
+        var savedTop = scrollParent.scrollTop;
+        scrollParent.scrollTop = savedTop + 1;
+        scrollParent.dispatchEvent(new Event('scroll', { bubbles: true }));
+        setTimeout(function () {
+          scrollParent.scrollTop = savedTop;
+          scrollParent.dispatchEvent(new Event('scroll', { bubbles: true }));
+        }, 50);
+      } catch (e) {}
       setTimeout(function () {
         overlay.style.opacity = '0';
         setTimeout(function () {
