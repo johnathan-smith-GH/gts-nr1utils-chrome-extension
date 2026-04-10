@@ -78,10 +78,50 @@ const Log = props => {
   });
   var uniqueAccountIds = Object.keys(allAccountIds);
 
+  // Build placeholder entries for widget-defined NRQL queries not yet captured
+  var widgetPlaceholders = [];
+  if (widgetMap && widgetMap.length > 0) {
+    var capturedNrqlNormalized = {};
+    sortedByStartTime.forEach(function (req) {
+      if (req.query) capturedNrqlNormalized[req.query.replace(/\s+/g, ' ').trim().toLowerCase()] = true;
+    });
+    widgetMap.forEach(function (w) {
+      if (w.inaccessible || !w.nrqlQueries) return;
+      w.nrqlQueries.forEach(function (nrql) {
+        var norm = nrql.replace(/\s+/g, ' ').trim().toLowerCase();
+        // Check if already captured (exact or substring match)
+        var alreadyCaptured = false;
+        for (var key in capturedNrqlNormalized) {
+          if (key === norm || key.indexOf(norm) !== -1 || norm.indexOf(key) !== -1) {
+            alreadyCaptured = true;
+            break;
+          }
+        }
+        if (!alreadyCaptured) {
+          var fromMatch = nrql.match(/from\s+(\S+)/i);
+          widgetPlaceholders.push({
+            id: -1,
+            query: nrql,
+            variables: {},
+            response: null,
+            errors: null,
+            status: 'defined',
+            type: 'CHART',
+            name: fromMatch ? fromMatch[1] : nrql.slice(0, 24),
+            timing: null,
+            _widgetTitle: w.title,
+            _widgetId: w.widgetId,
+            _isPlaceholder: true
+          });
+        }
+      });
+    });
+  }
+
   // Apply multi-account filter
   var displayRequests = showMultiAccountOnly
     ? sortedByStartTime.filter(function (req) { return getAccountIds(req).length > 1; })
-    : sortedByStartTime;
+    : sortedByStartTime.concat(widgetPlaceholders);
 
   const allVisibleIndices = displayRequests.map((_, idx) => idx);
   const allSelected = displayRequests.length > 0 && allVisibleIndices.every(idx => selectedIndices.includes(idx));
@@ -105,9 +145,9 @@ const Log = props => {
     placeholder: "Search for results",
     value: logFilter,
     onChange: updateLogFilter
-  })), widgetMap && widgetMap.length > 0 && /*#__PURE__*/React.createElement("div", {
+  })), widgetMap && widgetMap.length > 0 && widgetPlaceholders.length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "App-dashboardNotice"
-  }, "Dashboard detected \u2014 some widget queries may only fire when scrolled into view. Scroll through all widgets on the page to capture all NRQL requests."),
+  }, "Dashboard detected \u2014 grey entries below are widget-defined queries not yet captured as network requests. They will be replaced with live results as widgets load."),
   multiAccountResults.length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "App-multiAccountBanner"
   }, /*#__PURE__*/React.createElement("span", {

@@ -306,6 +306,19 @@ body {
   }
 }
 
+.App-requestType--defined {
+  background-color: #999;
+  border-color: #999;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-requestType--defined {
+    background-color: transparent;
+    border: 1px solid #777;
+    color: #777;
+  }
+}
+
 .App-requestType--withErrors {
   background-color: #F00;
   border-color: #F00;
@@ -418,6 +431,19 @@ body {
     border: 1px solid #2B8C0E;
     background-color: transparent;
     color: #2B8C0E;
+  }
+}
+
+.App-requestTimingLabel--defined {
+  background-color: #999;
+  border-color: #999;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-requestTimingLabel--defined {
+    background-color: transparent;
+    border: 1px solid #777;
+    color: #777;
   }
 }
 

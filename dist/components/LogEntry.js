@@ -42,9 +42,10 @@ const LogEntry = props => {
   };
 
   const logRequest = request;
+  const isPlaceholder = request._isPlaceholder;
   const isPending = request.status === 'pending';
-  const isTimeout = !isPending && request.errors && JSON.stringify(request.errors).match(/timeout/i);
-  const isError = !isPending && !!request.errors;
+  const isTimeout = !isPending && !isPlaceholder && request.errors && JSON.stringify(request.errors).match(/timeout/i);
+  const isError = !isPending && !isPlaceholder && !!request.errors;
 
   const truncateName = name => name.length > 28 ? `${name.slice(0, 28)}...` : name;
 
@@ -62,7 +63,11 @@ const LogEntry = props => {
   var timingLabel = 'Response time';
   var timingValue;
 
-  if (isPending) {
+  if (isPlaceholder) {
+    timingLabelClass += ' App-requestTimingLabel--defined';
+    timingLabel = 'Defined in widget';
+    timingValue = request._widgetTitle || '';
+  } else if (isPending) {
     timingLabelClass += ' App-requestTimingLabel--pending';
     timingValueClass += ' App-requestTimingValue--pending';
     timingLabel = 'Pending';
@@ -80,7 +85,9 @@ const LogEntry = props => {
 
   // Type badge class
   var typeClass = 'App-requestType';
-  if (isPending) {
+  if (isPlaceholder) {
+    typeClass += ' App-requestType--defined';
+  } else if (isPending) {
     typeClass += ' App-requestType--pending';
   } else if (isError) {
     typeClass += ' App-requestType--withErrors';
