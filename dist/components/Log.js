@@ -41,6 +41,7 @@ const Log = props => {
   } = props;
   const [showMultiAccountOnly, setShowMultiAccountOnly] = React.useState(false);
   function statusPriority(req) {
+    if (req._isPlaceholder) return -1;
     if (req.status === 'pending') return 0;
     if (req.status === 'error' || req.status === 'timeout') return 1;
     if (req.errors) return 1;
@@ -78,51 +79,11 @@ const Log = props => {
   });
   var uniqueAccountIds = Object.keys(allAccountIds);
 
-  // Build placeholder entries for widget-defined NRQL queries not yet captured
-  var widgetPlaceholders = [];
-  if (widgetMap && widgetMap.length > 0) {
-    var capturedNrqlNormalized = {};
-    sortedByStartTime.forEach(function (req) {
-      if (req.query) capturedNrqlNormalized[req.query.replace(/\s+/g, ' ').trim().toLowerCase()] = true;
-    });
-    widgetMap.forEach(function (w) {
-      if (w.inaccessible || !w.nrqlQueries) return;
-      w.nrqlQueries.forEach(function (nrql) {
-        var norm = nrql.replace(/\s+/g, ' ').trim().toLowerCase();
-        // Check if already captured (exact or substring match)
-        var alreadyCaptured = false;
-        for (var key in capturedNrqlNormalized) {
-          if (key === norm || key.indexOf(norm) !== -1 || norm.indexOf(key) !== -1) {
-            alreadyCaptured = true;
-            break;
-          }
-        }
-        if (!alreadyCaptured) {
-          var fromMatch = nrql.match(/from\s+(\S+)/i);
-          widgetPlaceholders.push({
-            id: -1,
-            query: nrql,
-            variables: {},
-            response: null,
-            errors: null,
-            status: 'defined',
-            type: 'CHART',
-            name: fromMatch ? fromMatch[1] : nrql.slice(0, 24),
-            timing: null,
-            _widgetTitle: w.title,
-            _widgetId: w.widgetId,
-            _isPlaceholder: true,
-            _matchedWidget: { title: w.title, widgetId: w.widgetId, pageName: w.pageName }
-          });
-        }
-      });
-    });
-  }
-
-  // Apply multi-account filter
+  // Apply multi-account filter (placeholders are now included in requests from RequestsPage)
+  var widgetPlaceholders = requests.filter(function (r) { return r._isPlaceholder; });
   var displayRequests = showMultiAccountOnly
     ? sortedByStartTime.filter(function (req) { return getAccountIds(req).length > 1; })
-    : widgetPlaceholders.concat(sortedByStartTime);
+    : sortedByStartTime;
 
   const allVisibleIndices = displayRequests.map((_, idx) => idx);
   const allSelected = displayRequests.length > 0 && allVisibleIndices.every(idx => selectedIndices.includes(idx));

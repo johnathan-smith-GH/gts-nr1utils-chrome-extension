@@ -122,7 +122,48 @@ const RequestsPage = props => {
   const matchRangesRef = useRef([]);
   const resultsRef = useRef(null);
 
-  const filteredRequests = logFilter.length ? logData.filter(function (request) {
+  // Build placeholder entries for widget-defined NRQL queries not yet captured
+  var widgetPlaceholders = [];
+  if (widgetMap && widgetMap.length > 0) {
+    var capturedNrqlNormalized = {};
+    logData.forEach(function (req) {
+      if (req.query) capturedNrqlNormalized[req.query.replace(/\s+/g, ' ').trim().toLowerCase()] = true;
+    });
+    widgetMap.forEach(function (w) {
+      if (w.inaccessible || !w.nrqlQueries) return;
+      w.nrqlQueries.forEach(function (nrql) {
+        var norm = nrql.replace(/\s+/g, ' ').trim().toLowerCase();
+        var alreadyCaptured = false;
+        for (var key in capturedNrqlNormalized) {
+          if (key === norm || key.indexOf(norm) !== -1 || norm.indexOf(key) !== -1) {
+            alreadyCaptured = true;
+            break;
+          }
+        }
+        if (!alreadyCaptured) {
+          var fromMatch = nrql.match(/from\s+(\S+)/i);
+          widgetPlaceholders.push({
+            id: -1,
+            query: nrql,
+            variables: {},
+            response: null,
+            errors: null,
+            status: 'defined',
+            type: 'CHART',
+            name: fromMatch ? fromMatch[1] : nrql.slice(0, 24),
+            timing: null,
+            _widgetTitle: w.title,
+            _widgetId: w.widgetId,
+            _isPlaceholder: true,
+            _matchedWidget: { title: w.title, widgetId: w.widgetId, pageName: w.pageName }
+          });
+        }
+      });
+    });
+  }
+
+  var allRequests = widgetPlaceholders.concat(logData);
+  const filteredRequests = logFilter.length ? allRequests.filter(function (request) {
     var filterLower = logFilter.toLowerCase();
     if (JSON.stringify(request).toLowerCase().includes(filterLower)) return true;
     // Also search matched widget title/page
@@ -132,7 +173,7 @@ const RequestsPage = props => {
       if (widgetStr.includes(filterLower)) return true;
     }
     return false;
-  }) : logData;
+  }) : allRequests;
   var visibleRequests = filteredRequests;
   if (showOnlyErrors) {
     visibleRequests = visibleRequests.filter(function (request) { return !!request.errors; });
