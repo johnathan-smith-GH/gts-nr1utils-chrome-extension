@@ -36,7 +36,8 @@ const Log = props => {
     selectedIndices,
     onToggleSelect,
     onSelectAllVisible,
-    onClearSelected
+    onClearSelected,
+    widgetMap
   } = props;
   const [showMultiAccountOnly, setShowMultiAccountOnly] = React.useState(false);
   function statusPriority(req) {
@@ -104,7 +105,10 @@ const Log = props => {
     placeholder: "Search for results",
     value: logFilter,
     onChange: updateLogFilter
-  })), multiAccountResults.length > 0 && /*#__PURE__*/React.createElement("div", {
+  })), widgetMap && widgetMap.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "App-dashboardNotice"
+  }, "Dashboard detected \u2014 some widget queries may only fire when scrolled into view. Scroll through all widgets on the page to capture all NRQL requests."),
+  multiAccountResults.length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "App-multiAccountBanner"
   }, /*#__PURE__*/React.createElement("span", {
     className: "App-multiAccountLabel"

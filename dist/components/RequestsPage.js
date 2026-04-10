@@ -252,11 +252,9 @@ const RequestsPage = props => {
     selectedIndices: selectedIndices || [],
     onToggleSelect: toggleSelectedIndex,
     onSelectAllVisible: selectAllVisible,
-    onClearSelected: clearSelectedIndices
-  }), widgetMap && widgetMap.length > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "App-dashboardNotice"
-  }, "Dashboard detected \u2014 some widget queries may only fire when scrolled into view. Scroll through all widgets on the page to capture all NRQL requests."),
-  (function () {
+    onClearSelected: clearSelectedIndices,
+    widgetMap: widgetMap
+  }), (function () {
     // Show inaccessible widgets banner when widgets exist that the user can't access
     if (!widgetMap || !widgetMap.length) return null;
     var inaccessible = widgetMap.filter(function (w) { return w.inaccessible; });
