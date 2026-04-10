@@ -163,8 +163,11 @@
       <li><strong>Success</strong> (green) — Resolved requests without errors</li>
     </ol>
 
+    <h3>Keyboard Navigation</h3>
+    <p>Use the <strong>Arrow Up</strong> and <strong>Arrow Down</strong> keys to navigate between requests in the list. Press <strong>Enter</strong> to select and view a request's details.</p>
+
     <h3>Search</h3>
-    <p>The <strong>"Search for results"</strong> field at the top of the left panel filters results by searching across the entire request — query text, variables, response data, errors, and all other fields.</p>
+    <p>The <strong>"Search for results"</strong> field at the top of the left panel filters results by searching across the entire request — query text, variables, response data, errors, and all other fields. When dashboard widgets are detected, search also matches against widget titles and page names.</p>
 
     <h3>Multi-Account Detection</h3>
     <p>When results are found that query more than one account ID, a yellow notification banner appears listing the account IDs detected and the number of affected results. A toggle button lets you filter the list to show only those multi-account results.</p>
@@ -188,12 +191,13 @@
       <li><strong>Owning Team</strong> (blue left border) — Shows the team responsible for the query, extracted from the <code>owningTeam</code> field in the JSON response. This banner only appears when the field is present in the response — not all responses include owning team information.</li>
       <li><strong>Dashboard Widget</strong> (purple left border) — When a NRQL result matches a dashboard widget, shows the widget title, page name, and widget ID. Matched by comparing normalized query text against the dashboard entity definition.</li>
       <li><strong>Source Component</strong> (purple left border) — When no widget match is available, shows the React component name that initiated the request, captured from the call stack at fetch time.</li>
-      <li><strong>Account IDs Being Queried</strong> (green left border) — Lists the account IDs found in the response's <code>account_ids</code> arrays.</li>
+      <li><strong>Account ID Identifiers Being Queried</strong> (green left border) — Lists the account IDs found in the response's <code>account_ids</code> arrays.</li>
       <li><strong>Error</strong> (red left border) — Displays error messages from the response, making them immediately visible without scrolling.</li>
     </ul>
 
     <h3>Locate on Page</h3>
-    <p>When a NRQL result is matched to a dashboard widget, a <span class="pill pill-teal">LOCATE ON PAGE</span> button appears in the toolbar next to "Copy JSON to Clipboard". Clicking it scrolls the page to the corresponding widget and highlights it with a purple overlay that fades after 2 seconds.</p>
+    <p>When a NRQL result is matched to a dashboard widget, a <span class="pill" style="background:#7c3aed;">LOCATE ON PAGE</span> button appears in the toolbar next to "Copy JSON to Clipboard". Clicking it scrolls the page to the corresponding widget and highlights it with a purple overlay that fades after 2 seconds.</p>
+    <p>For widgets that are below the fold and not yet rendered by New Relic (which lazy-loads widgets via IntersectionObserver), the extension automatically scrolls the dashboard incrementally to trigger rendering, then locates and highlights the widget once it appears in the DOM.</p>
 
     <h3>Raw JSON</h3>
     <p>The full request object is displayed as formatted JSON, exactly as it would appear in an exported file. This includes the query, variables, response, errors, timing, and all metadata.</p>
@@ -231,9 +235,14 @@
     <p>These filters can be combined with the search field and the multi-account filter.</p>
   </div>
 
+  <h2>Preserve Log</h2>
+  <div class="section">
+    <p>The <strong>Preserve log</strong> checkbox keeps captured requests when navigating between pages on the New Relic site. Without it, requests are cleared on each page navigation. This setting is saved to localStorage and persists across sessions.</p>
+  </div>
+
   <h2>Clear Log</h2>
   <div class="section">
-    <p>The <span class="pill pill-red">CLEAR LOG</span> button removes all captured results from the current tab. This is the only way to clear results — they persist across page navigation within the same tab.</p>
+    <p>The <span class="pill pill-red">CLEAR LOG</span> button removes all captured results from the current tab, including any grey widget placeholder entries. This is the only way to clear results — with Preserve Log enabled, they persist across page navigation within the same tab.</p>
   </div>
 
   <h2>Debug Mode</h2>
@@ -265,6 +274,23 @@
     </ul>
     <h3>Searching by Widget Name</h3>
     <p>The search filter also matches against widget titles. For example, searching for "App Usage" will find the NRQL result that corresponds to the "App Usage" widget on the dashboard.</p>
+  </div>
+
+  <h2>Dashboard Widget Placeholders</h2>
+  <div class="section">
+    <p>When a dashboard is detected, the NRQL tab shows <span class="pill pill-grey">DEFINED</span> grey entries for each widget-defined NRQL query that has not yet been captured as a live network request. A <strong>"Dashboard detected"</strong> notice banner appears at the top of the results list explaining this behavior.</p>
+    <h3>How Placeholders Work</h3>
+    <ul>
+      <li>The extension extracts all NRQL queries from the dashboard's widget definitions (via the <code>GetDashboardEntityQuery</code> GraphQL response).</li>
+      <li>Any widget query that hasn't yet been captured as a live network request appears as a grey placeholder entry.</li>
+      <li>When the corresponding widget loads and fires its NRQL query, the grey placeholder is automatically replaced with the live result.</li>
+    </ul>
+    <h3>Loading Widget Queries</h3>
+    <p>New Relic dashboards lazy-load widgets as they scroll into view. To trigger loading for a specific widget:</p>
+    <ul>
+      <li><strong>Use "Locate on Page"</strong> — Click the <span class="pill" style="background:#7c3aed;">LOCATE ON PAGE</span> button on a grey entry. The extension scrolls to the widget, triggers its rendering, and the placeholder will be replaced once the query fires.</li>
+      <li><strong>Scroll manually</strong> — Scroll through the dashboard page to load widgets naturally.</li>
+    </ul>
   </div>
 
   <h2>Inaccessible Widgets</h2>

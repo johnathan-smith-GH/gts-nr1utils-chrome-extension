@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.3
+- Update User Guide: add Dashboard Widget Placeholders section, Preserve Log, Keyboard Navigation, scroll-to-lazy-load details for Locate on Page
+- Update Under The Hood: rewrite Locate on Page section (content.js architecture, 8 DOM strategies, scroll-to-lazy-load, fallback tab routing, debug logging), add Widget Placeholders and Widget Map Management sections
+- Update README: add Preserve Log and Keyboard Navigation features
+- Rename "Account IDs Being Queried" to "Account ID Identifiers Being Queried" across all docs
+
 ## 1.8.2
 - Backfill CHANGELOG with all 1.8.0 features that were missing (placeholder entries, dashboard notice, overlay fixes, widget map merging, etc.)
 - Add Dashboard Widget Placeholders to README feature list

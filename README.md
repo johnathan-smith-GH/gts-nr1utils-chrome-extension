@@ -4,7 +4,7 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 
 Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 Debug Mode panel, and information scattered across the New Relic UI into a single side panel.
 
-**Version:** 1.8.2
+**Version:** 1.8.3
 
 ## Features
 
@@ -24,6 +24,8 @@ Consolidates troubleshooting workflows that typically require juggling browser d
 - **Dashboard Widget Placeholders** — Grey "defined" entries appear in the NRQL results for widget queries not yet captured as network requests. These are replaced with live results as widgets load via "Locate on Page" or manual scrolling.
 - **Inaccessible Widget Detection** — Detects dashboard widgets the user can't access and shows an amber banner listing affected widget names and directing to the dashboard owner for account identification.
 - **Source Component Tracing** — Captures call stacks at fetch intercept time to identify the React component that initiated a request, shown as a fallback "Source Component" banner when widget map matching is unavailable.
+- **Preserve Log** — Checkbox to persist captured requests across page navigations within the same tab, saved to localStorage.
+- **Keyboard Navigation** — Arrow Up/Down to navigate between requests, Enter to select.
 - **Export** — Select results and export as clean JSON with full context (query, variables, response, timing, metadata).
 - **Debug Mode** — Displays platform info (version, region, user ID, account ID), subscribed nerdpack details, and current nerdlet metadata. Updates on SPA navigation.
 
