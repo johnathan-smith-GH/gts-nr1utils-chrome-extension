@@ -733,6 +733,19 @@ body {
   }
 }
 
+.App-placeholderNote {
+  font-size: 11px;
+  color: #999;
+  font-style: italic;
+  padding: 2px 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-placeholderNote {
+    color: #777;
+  }
+}
+
 .App-locateBtn {
   color: #FFF !important;
   background-color: #7c3aed;

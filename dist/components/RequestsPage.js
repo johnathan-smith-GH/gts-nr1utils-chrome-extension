@@ -310,6 +310,11 @@ const RequestsPage = props => {
   }, "\u2715")), /*#__PURE__*/React.createElement("div", {
     className: "App-copyResultBar"
   }, (function () {
+    if (currentQuery._isPlaceholder) {
+      return /*#__PURE__*/React.createElement("span", {
+        className: "App-placeholderNote"
+      }, "Scroll to this widget on the dashboard to capture the live request.");
+    }
     var matched = matchWidgetByNrql(currentQuery, widgetMap);
     if (!matched) return null;
     return /*#__PURE__*/React.createElement("a", {
@@ -320,7 +325,7 @@ const RequestsPage = props => {
         }
       }
     }, "\uD83D\uDCCD Locate on Page");
-  })(), /*#__PURE__*/React.createElement("a", {
+  })(), !currentQuery._isPlaceholder && /*#__PURE__*/React.createElement("a", {
     className: "App-copyResultBtn",
     onClick: function () {
       var json = JSON.stringify(currentQuery, null, 2);
