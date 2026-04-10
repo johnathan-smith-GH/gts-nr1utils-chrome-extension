@@ -634,17 +634,17 @@ body {
   }
 }
 
-.App-inaccessibleAccounts {
+.App-inaccessibleNote {
   display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: #d97706;
+  font-size: 11px;
+  color: #78716c;
   margin-bottom: 8px;
+  line-height: 1.4;
 }
 
 @media (prefers-color-scheme: dark) {
-  .App-inaccessibleAccounts {
-    color: #fbbf24;
+  .App-inaccessibleNote {
+    color: #a8a29e;
   }
 }
 

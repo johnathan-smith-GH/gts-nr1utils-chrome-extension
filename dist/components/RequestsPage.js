@@ -262,10 +262,13 @@ const RequestsPage = props => {
       className: "App-inaccessibleBanner"
     }, /*#__PURE__*/React.createElement("span", {
       className: "App-inaccessibleLabel"
-    }, "\u26A0\uFE0F " + inaccessible.length + " widget" + (inaccessible.length > 1 ? "s" : "") + " on this dashboard " + (inaccessible.length > 1 ? "were" : "was") + " added from an account the current user does not have access to. The source account and query details are hidden by the platform for inaccessible widgets."),
+    }, "\u26A0\uFE0F " + inaccessible.length + " widget" + (inaccessible.length > 1 ? "s" : "") + " on this dashboard " + (inaccessible.length > 1 ? "were" : "was") + " added from an account the current user does not have access to."),
     /*#__PURE__*/React.createElement("span", {
-      className: "App-inaccessibleAccounts"
-    }, "Dashboard account: " + (inaccessible[0].dashboardAccountId || 'unknown') + " (accessible) \u2014 widget source account: unknown (not exposed by NerdGraph for inaccessible widgets)"),
+      className: "App-inaccessibleNote"
+    }, "The source account is not exposed by the platform for inaccessible widgets. To identify it, check with the dashboard owner (" + (function () {
+      var owner = widgetMap.find(function (w) { return w.dashboardOwnerEmail; });
+      return owner ? owner.dashboardOwnerEmail : 'unknown';
+    })() + ") or an admin with access to edit this dashboard."),
     /*#__PURE__*/React.createElement("div", {
       className: "App-inaccessibleWidgets"
     }, /*#__PURE__*/React.createElement("span", {

@@ -74,6 +74,7 @@ function extractWidgetMapFromDashboard(graphqlRequests) {
     var entity = resp.data.actor && resp.data.actor.entity;
     if (!entity || !entity.pages) continue;
     var dashboardAccountId = entity.accountId || null;
+    var dashboardOwnerEmail = entity.owner && entity.owner.email || null;
     for (var pi = 0; pi < entity.pages.length; pi++) {
       var page = entity.pages[pi];
       var pageName = page.name || '';
@@ -97,7 +98,8 @@ function extractWidgetMapFromDashboard(graphqlRequests) {
             nrqlQueries: nrqlQueries,
             layout: w.layout || null,
             inaccessible: isInaccessible,
-            dashboardAccountId: dashboardAccountId
+            dashboardAccountId: dashboardAccountId,
+            dashboardOwnerEmail: dashboardOwnerEmail
           });
         }
       }
