@@ -111,7 +111,8 @@ const Log = props => {
             timing: null,
             _widgetTitle: w.title,
             _widgetId: w.widgetId,
-            _isPlaceholder: true
+            _isPlaceholder: true,
+            _matchedWidget: { title: w.title, widgetId: w.widgetId, pageName: w.pageName }
           });
         }
       });
