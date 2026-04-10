@@ -66,6 +66,20 @@ chrome.runtime.onConnect.addListener(function (port) {
       return;
     }
 
+    if (message.action === 'HIGHLIGHT_WIDGET') {
+      chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+        if (tabs[0]) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'HIGHLIGHT_WIDGET',
+            widgetTitle: message.widgetTitle,
+            widgetId: message.widgetId,
+            pageName: message.pageName
+          }).catch(function () {});
+        }
+      });
+      return;
+    }
+
     if (message.action === 'GET_DEBUG_INFO') {
       // Send cached debug info immediately
       if (debugInfoCache.platformInfo) {

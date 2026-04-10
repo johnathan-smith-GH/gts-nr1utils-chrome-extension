@@ -282,7 +282,18 @@ const RequestsPage = props => {
     title: "Close (Escape)"
   }, "\u2715")), /*#__PURE__*/React.createElement("div", {
     className: "App-copyResultBar"
-  }, /*#__PURE__*/React.createElement("a", {
+  }, (function () {
+    var matched = matchWidgetByNrql(currentQuery, widgetMap);
+    if (!matched) return null;
+    return /*#__PURE__*/React.createElement("a", {
+      className: "App-locateBtn",
+      onClick: function () {
+        if (props.onLocateWidget) {
+          props.onLocateWidget(matched);
+        }
+      }
+    }, "\uD83D\uDCCD Locate on Page");
+  })(), /*#__PURE__*/React.createElement("a", {
     className: "App-copyResultBtn",
     onClick: function () {
       var json = JSON.stringify(currentQuery, null, 2);

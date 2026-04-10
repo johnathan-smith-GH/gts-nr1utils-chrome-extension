@@ -489,7 +489,15 @@ const App = props => {
     toggleSelectedIndex: toggleSelectedIndex,
     selectAllVisible: selectAllVisible,
     clearSelectedIndices: clearSelectedIndices,
-    widgetMap: widgetMap
+    widgetMap: widgetMap,
+    onLocateWidget: function (widget) {
+      chromeApi.port.postMessage({
+        action: 'HIGHLIGHT_WIDGET',
+        widgetTitle: widget.title,
+        widgetId: widget.widgetId,
+        pageName: widget.pageName
+      });
+    }
   }), currentPage === PageName.DEBUG_INFO && /*#__PURE__*/React.createElement(DebugInfoPage, {
     debugPlatformInfo: debugPlatformInfo,
     debugNerdpacks: debugNerdpacks,

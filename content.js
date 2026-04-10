@@ -160,6 +160,15 @@
         // Forward to the page script to re-send cached debug info
         window.postMessage({ type: 'NR1_UTILS_GET_DEBUG_INFO' }, '*');
       }
+
+      if (message.action === 'HIGHLIGHT_WIDGET') {
+        window.postMessage({
+          type: 'NR1_UTILS_HIGHLIGHT_WIDGET',
+          widgetTitle: message.widgetTitle,
+          widgetId: message.widgetId,
+          pageName: message.pageName
+        }, '*');
+      }
     });
   } catch (e) {
     // Extension context invalidated

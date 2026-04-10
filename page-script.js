@@ -141,6 +141,100 @@
   } // end if (!earlyWrapped) for XHR
 
   // ============================================================
+  // Widget highlight: find and highlight a widget on the page
+  // ============================================================
+  function highlightWidgetOnPage(widgetTitle, widgetId) {
+    // Remove any existing highlight
+    var existing = document.getElementById('nr1-utils-widget-highlight');
+    if (existing) existing.remove();
+
+    var targetElement = null;
+
+    // Strategy 1: Find by widget title text in the DOM
+    if (widgetTitle) {
+      // Look for elements that contain the widget title
+      // Dashboard widgets typically have their title in a heading or span
+      var allElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, span, div, p');
+      var titleLower = widgetTitle.toLowerCase().trim();
+      for (var i = 0; i < allElements.length; i++) {
+        var el = allElements[i];
+        var text = (el.textContent || '').trim().toLowerCase();
+        // Match exact title text (not partial matches from parent containers)
+        if (text === titleLower && el.children.length === 0) {
+          targetElement = el;
+          break;
+        }
+      }
+
+      // If exact leaf-node match didn't work, try innerText match on small elements
+      if (!targetElement) {
+        for (var j = 0; j < allElements.length; j++) {
+          var el2 = allElements[j];
+          var innerText = (el2.innerText || '').trim().toLowerCase();
+          if (innerText === titleLower && el2.offsetHeight < 100) {
+            targetElement = el2;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!targetElement) return;
+
+    // Walk up to find the widget container (the chart/visualization wrapper)
+    // Look for a parent that looks like a widget card (has reasonable size)
+    var container = targetElement;
+    var maxWalk = 10;
+    while (container.parentElement && maxWalk-- > 0) {
+      var parent = container.parentElement;
+      var rect = parent.getBoundingClientRect();
+      // Stop when we find a container that's at least 200px wide and tall
+      // but not the entire page
+      if (rect.width >= 200 && rect.height >= 150 && rect.width < window.innerWidth * 0.9) {
+        container = parent;
+        break;
+      }
+      container = parent;
+    }
+
+    // Scroll the container into view
+    container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Create highlight overlay
+    var overlay = document.createElement('div');
+    overlay.id = 'nr1-utils-widget-highlight';
+    overlay.style.cssText = [
+      'position: fixed',
+      'pointer-events: none',
+      'z-index: 999999',
+      'border: 3px solid #7c3aed',
+      'border-radius: 8px',
+      'box-shadow: 0 0 20px rgba(124, 58, 237, 0.4), inset 0 0 20px rgba(124, 58, 237, 0.05)',
+      'transition: opacity 0.5s ease',
+      'opacity: 1'
+    ].join('; ');
+
+    document.body.appendChild(overlay);
+
+    // Position the overlay over the container after scroll completes
+    setTimeout(function () {
+      var rect = container.getBoundingClientRect();
+      overlay.style.top = rect.top + 'px';
+      overlay.style.left = rect.left + 'px';
+      overlay.style.width = rect.width + 'px';
+      overlay.style.height = rect.height + 'px';
+
+      // Fade out after 2 seconds
+      setTimeout(function () {
+        overlay.style.opacity = '0';
+        setTimeout(function () {
+          overlay.remove();
+        }, 500);
+      }, 2000);
+    }, 400);
+  }
+
+  // ============================================================
   // Location request handler
   // ============================================================
   window.addEventListener('message', function (event) {
@@ -153,6 +247,10 @@
         pathname: window.location.pathname,
         search: window.location.search
       }, '*');
+    }
+
+    if (event.data && event.data.type === 'NR1_UTILS_HIGHLIGHT_WIDGET') {
+      highlightWidgetOnPage(event.data.widgetTitle, event.data.widgetId);
     }
 
     if (event.data && event.data.type === 'NR1_UTILS_GET_DEBUG_INFO') {
