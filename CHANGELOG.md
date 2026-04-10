@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7
+- Fix status badges to accurately reflect extension behavior: error responses show red query pill with green timing pill, timeouts show both red
+
 ## 1.6
 - Improve status indicator documentation in README and User Guide to show all four states (pending, success, error, timeout) with both query name and timing pill colors
 
