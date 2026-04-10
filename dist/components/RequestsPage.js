@@ -126,7 +126,7 @@ const RequestsPage = props => {
     var filterLower = logFilter.toLowerCase();
     if (JSON.stringify(request).toLowerCase().includes(filterLower)) return true;
     // Also search matched widget title/page
-    var matched = matchWidgetByNrql(request, widgetMap);
+    var matched = request._matchedWidget || matchWidgetByNrql(request, widgetMap);
     if (matched) {
       var widgetStr = (matched.title + ' ' + matched.pageName + ' ' + matched.widgetId).toLowerCase();
       if (widgetStr.includes(filterLower)) return true;
@@ -310,7 +310,7 @@ const RequestsPage = props => {
   }, "\u2715")), /*#__PURE__*/React.createElement("div", {
     className: "App-copyResultBar"
   }, (function () {
-    var matched = matchWidgetByNrql(currentQuery, widgetMap);
+    var matched = currentQuery._matchedWidget || matchWidgetByNrql(currentQuery, widgetMap);
     if (!matched) return null;
     return /*#__PURE__*/React.createElement("a", {
       className: "App-locateBtn",
@@ -337,7 +337,7 @@ const RequestsPage = props => {
     className: "App-owningTeamValue"
   }, findOwningTeam(currentQuery))),
   (function () {
-    var matched = matchWidgetByNrql(currentQuery, widgetMap);
+    var matched = currentQuery._matchedWidget || matchWidgetByNrql(currentQuery, widgetMap);
     if (matched) {
       return /*#__PURE__*/React.createElement("div", {
         className: "App-widgetHintsBanner"

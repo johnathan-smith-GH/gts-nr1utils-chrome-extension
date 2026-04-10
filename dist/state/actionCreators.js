@@ -49,7 +49,19 @@ const clearLog = state => {
 };
 
 const updateNrqlRequests = (state, action) => {
-  state.nrqlRequests = state.nrqlRequests.concat(action.payload);
+  var newReqs = action.payload;
+  var wm = state.widgetMap;
+  if (wm && wm.length) {
+    newReqs.forEach(function (req) {
+      if (!req._matchedWidget && req.query) {
+        var matched = matchNrqlToWidget(req.query, wm);
+        if (matched) {
+          req._matchedWidget = { title: matched.title, widgetId: matched.widgetId, pageName: matched.pageName };
+        }
+      }
+    });
+  }
+  state.nrqlRequests = state.nrqlRequests.concat(newReqs);
   return state;
 };
 
@@ -174,6 +186,33 @@ const completeRequest = (state, action) => {
   return state;
 };
 
+function normalizeNrql(s) {
+  return (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function matchNrqlToWidget(query, widgetMap) {
+  if (!query || !widgetMap || !widgetMap.length) return null;
+  var qn = normalizeNrql(query);
+  // Pass 1: exact
+  for (var i = 0; i < widgetMap.length; i++) {
+    var w = widgetMap[i];
+    if (!w.nrqlQueries) continue;
+    for (var j = 0; j < w.nrqlQueries.length; j++) {
+      if (qn === normalizeNrql(w.nrqlQueries[j])) return w;
+    }
+  }
+  // Pass 2: substring
+  for (var i2 = 0; i2 < widgetMap.length; i2++) {
+    var w2 = widgetMap[i2];
+    if (!w2.nrqlQueries) continue;
+    for (var j2 = 0; j2 < w2.nrqlQueries.length; j2++) {
+      var wn = normalizeNrql(w2.nrqlQueries[j2]);
+      if (qn.indexOf(wn) !== -1 || wn.indexOf(qn) !== -1) return w2;
+    }
+  }
+  return null;
+}
+
 const setWidgetMap = (state, action) => {
   // Merge new widgets with existing, deduplicating by widgetId
   var existing = state.widgetMap || [];
@@ -181,6 +220,22 @@ const setWidgetMap = (state, action) => {
   existing.forEach(function (w) { if (w.widgetId) existingIds[w.widgetId] = true; });
   var newWidgets = action.payload.filter(function (w) { return !w.widgetId || !existingIds[w.widgetId]; });
   state.widgetMap = existing.concat(newWidgets);
+
+  // Eagerly match existing NRQL requests to widgets
+  var fullMap = state.widgetMap;
+  state.nrqlRequests.forEach(function (req) {
+    if (!req._matchedWidget && req.query) {
+      var matched = matchNrqlToWidget(req.query, fullMap);
+      if (matched) {
+        req._matchedWidget = {
+          title: matched.title,
+          widgetId: matched.widgetId,
+          pageName: matched.pageName
+        };
+      }
+    }
+  });
+
   return state;
 };
 
