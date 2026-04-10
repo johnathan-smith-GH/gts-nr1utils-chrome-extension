@@ -706,6 +706,60 @@ body {
   }
 }
 
+.App-widgetHintsBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 10px 20px;
+  background-color: #f5f0ff;
+  border-left: 4px solid #7c3aed;
+  border-bottom: 1px solid var(--border-color);
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-widgetHintsBanner {
+    background-color: rgba(124, 58, 237, 0.1);
+  }
+}
+
+.App-widgetHintsLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: #333;
+  white-space: nowrap;
+  width: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-widgetHintsLabel {
+    color: #ddd;
+  }
+}
+
+.App-widgetHintsItem {
+  font-size: 11px;
+  color: #555;
+  word-break: break-all;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-widgetHintsItem {
+    color: #bbb;
+  }
+}
+
+.App-widgetHintsItem strong {
+  color: #7c3aed;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-widgetHintsItem strong {
+    color: #a78bfa;
+  }
+}
+
 .App-owningTeamBanner {
   display: flex;
   align-items: center;

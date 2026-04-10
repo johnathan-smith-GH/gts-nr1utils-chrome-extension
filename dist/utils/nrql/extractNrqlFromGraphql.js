@@ -41,6 +41,65 @@ function extractAccountId(variables) {
 }
 
 /**
+ * Extract widget-identifying hints from GraphQL variables and query text.
+ * Returns an object with any available identifiers, or null if none found.
+ */
+function extractWidgetHints(variables, query) {
+  var hints = {};
+  var found = false;
+
+  // Known widget-identifying keys to look for in variables
+  var knownKeys = {
+    entityGuid: 'entityGuid',
+    entity_guid: 'entityGuid',
+    guid: 'entityGuid',
+    widgetId: 'widgetId',
+    widget_id: 'widgetId',
+    dashboardGuid: 'dashboardGuid',
+    dashboard_guid: 'dashboardGuid',
+    layoutId: 'layoutId',
+    layout_id: 'layoutId'
+  };
+
+  if (variables && typeof variables === 'object') {
+    // Check known keys directly
+    for (var key in knownKeys) {
+      if (variables[key] != null) {
+        hints[knownKeys[key]] = variables[key];
+        found = true;
+      }
+    }
+
+    // Check for title in variables
+    if (variables.title) {
+      hints.title = variables.title;
+      found = true;
+    }
+
+    // Scan all keys for widget/layout-related identifiers
+    for (var vKey in variables) {
+      if (vKey in knownKeys) continue; // already handled
+      var lk = vKey.toLowerCase();
+      if ((lk.indexOf('widget') !== -1 || lk.indexOf('layout') !== -1) && variables[vKey] != null) {
+        hints[vKey] = variables[vKey];
+        found = true;
+      }
+    }
+  }
+
+  // Extract operation name from query text
+  if (query) {
+    var opMatch = query.match(/(query|mutation|subscription)\s+([\w]+)/);
+    if (opMatch) {
+      hints.operationName = opMatch[2];
+      found = true;
+    }
+  }
+
+  return found ? hints : null;
+}
+
+/**
  * Given an array of built GraphQL request objects (from buildGraphqlRequests),
  * extract any embedded NRQL queries and return them as NRQL request objects
  * suitable for the NRQL requests tab.
@@ -76,8 +135,9 @@ const extractNrqlFromGraphql = (graphqlRequests) => {
     const responseData = gqlReq.response ? gqlReq.response.data : null;
     const nrqlData = findNrqlData(responseData);
     const parsedQuery = parseNrqlListing(nrqlQuery);
+    const widgetHints = extractWidgetHints(gqlReq.variables, gqlReq.query);
 
-    nrqlRequests.push({
+    var nrqlReqObj = {
       id: -1,
       requestId: gqlReq.requestId,
       variables: { accountId: accountId },
@@ -88,7 +148,10 @@ const extractNrqlFromGraphql = (graphqlRequests) => {
       type: LogRequestType.CHART,
       name: parsedQuery.name,
       timing: gqlReq.timing
-    });
+    };
+    if (widgetHints) nrqlReqObj.widgetHints = widgetHints;
+
+    nrqlRequests.push(nrqlReqObj);
   }
 
   return nrqlRequests;

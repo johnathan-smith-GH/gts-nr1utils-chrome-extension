@@ -257,6 +257,16 @@ const RequestsPage = props => {
   }, "Owning Team:"), /*#__PURE__*/React.createElement("span", {
     className: "App-owningTeamValue"
   }, findOwningTeam(currentQuery))),
+  currentQuery.widgetHints && /*#__PURE__*/React.createElement("div", {
+    className: "App-widgetHintsBanner"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "App-widgetHintsLabel"
+  }, "Widget Context:"), Object.keys(currentQuery.widgetHints).map(function (key) {
+    return /*#__PURE__*/React.createElement("span", {
+      key: key,
+      className: "App-widgetHintsItem"
+    }, /*#__PURE__*/React.createElement("strong", null, key + ': '), String(currentQuery.widgetHints[key]));
+  })),
   findAccountIds(currentQuery).length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "App-accountIdBanner"
   }, /*#__PURE__*/React.createElement("span", {
