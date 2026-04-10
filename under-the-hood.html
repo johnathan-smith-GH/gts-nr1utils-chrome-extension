@@ -289,26 +289,97 @@
     </ul>
   </div>
 
+  <h2>Widget Correlation &amp; Locate on Page</h2>
+  <p>How NRQL results are matched to dashboard widgets and how the Locate on Page feature works.</p>
+
+  <h3>Dashboard Widget Map</h3>
+  <div class="tech-section">
+    <ul>
+      <li><code>extractWidgetMapFromDashboard()</code> in <code>App.js</code> detects <code>GetDashboardEntityQuery</code> responses by checking if the GraphQL operation name contains "DashboardEntity" or "GetDashboard"</li>
+      <li>Walks <code>response.data.actor.entity.pages[].widgets[]</code> to build an array of widget descriptors: <code>{ widgetId, title, pageName, nrqlQueries, layout, inaccessible, dashboardAccountId, dashboardOwnerEmail }</code></li>
+      <li>NRQL queries are extracted from <code>widget.rawConfiguration.nrqlQueries[].query</code></li>
+      <li>Widgets with <code>visualization.id === 'viz.inaccessible'</code> are flagged as inaccessible</li>
+      <li>The widget map is stored in Redux state via <code>setWidgetMap</code> action</li>
+    </ul>
+  </div>
+
+  <h3>Widget Matching</h3>
+  <div class="tech-section">
+    <ul>
+      <li><code>matchWidgetByNrql(request, widgetMap)</code> in <code>RequestsPage.js</code> matches a captured NRQL query to a dashboard widget</li>
+      <li><strong>Pass 1 — Exact match:</strong> Normalizes whitespace and compares lowercased query text</li>
+      <li><strong>Pass 2 — Substring match:</strong> Checks if one query contains the other, handling NR1 runtime modifications to query aliases (e.g., <code>'Slowest 10%'</code> becoming <code>'Slowest 10% (s) (90%)'</code>)</li>
+      <li>Widget titles are also included in the search filter logic, so users can search by widget name</li>
+    </ul>
+  </div>
+
+  <h3>Widget Hint Extraction</h3>
+  <div class="tech-section">
+    <ul>
+      <li><code>extractWidgetHints()</code> in <code>extractNrqlFromGraphql.js</code> scans GraphQL variables for known widget-identifying keys: <code>entityGuid</code>, <code>widgetId</code>, <code>dashboardGuid</code>, <code>layoutId</code>, <code>title</code></li>
+      <li>Also scans for any variable key containing "widget" or "layout" (case-insensitive)</li>
+      <li>Extracts the GraphQL operation name from the query text</li>
+      <li>Attached as <code>widgetHints</code> on NRQL request objects produced by <code>extractNrqlFromGraphql</code></li>
+    </ul>
+  </div>
+
+  <h3>Locate on Page</h3>
+  <div class="tech-section">
+    <p>Message flow: side panel → <code>background.js</code> → <code>content.js</code> → <code>page-script.js</code></p>
+    <ul>
+      <li>Panel sends <code>HIGHLIGHT_WIDGET</code> with <code>widgetTitle</code> and <code>widgetId</code> via the port</li>
+      <li><code>background.js</code> forwards to the active tab's content script via <code>chrome.tabs.sendMessage</code></li>
+      <li><code>content.js</code> posts <code>NR1_UTILS_HIGHLIGHT_WIDGET</code> to the page via <code>window.postMessage</code></li>
+      <li><code>highlightWidgetOnPage()</code> in <code>page-script.js</code> finds the widget by searching the DOM for elements matching the widget title text (exact leaf-node match, then innerText fallback)</li>
+      <li>Walks up the DOM tree to find the widget container (an element at least 200px wide and 150px tall but not the full page)</li>
+      <li>Scrolls the container into view with <code>scrollIntoView({ behavior: 'smooth', block: 'center' })</code></li>
+      <li>Creates a fixed-position overlay with purple border and glow, positioned after a 400ms delay (for scroll to complete), then fades out after 2 seconds</li>
+    </ul>
+  </div>
+
+  <h3>Call Stack Capture</h3>
+  <div class="tech-section">
+    <ul>
+      <li><code>captureComponentHint()</code> in <code>early-wrap.js</code> captures <code>new Error().stack</code> synchronously at fetch/XHR intercept time</li>
+      <li>Parses stack frames, skipping internal extension files (<code>early-wrap.js</code>, <code>page-script.js</code>, <code>content.js</code>)</li>
+      <li>Searches for component-relevant patterns: <code>Widget</code>, <code>Chart</code>, <code>Billboard</code>, <code>Table</code>, <code>Line</code>, <code>Bar</code>, <code>Pie</code>, <code>Nrql</code>, <code>Dashboard</code>, <code>Visualization</code>, etc.</li>
+      <li>Extracts the function name from the first matching frame as <code>componentHint</code></li>
+      <li>Keeps the first 5 meaningful frames as <code>stackSummary</code></li>
+      <li>Both fields are passed through the message pipeline (<code>content.js</code> → <code>background.js</code> → <code>App.js</code>) and stored on request objects</li>
+      <li>Displayed as a "Source Component" fallback banner in <code>RequestsPage.js</code> when widget map matching does not produce a result</li>
+    </ul>
+  </div>
+
+  <h3>Inaccessible Widget Detection</h3>
+  <div class="tech-section">
+    <ul>
+      <li>Widgets with <code>visualization.id === 'viz.inaccessible'</code> in the <code>GetDashboardEntityQuery</code> response are flagged</li>
+      <li>For these widgets, <code>rawConfiguration</code> is empty (<code>{}</code>) and <code>linkedEntities</code> is <code>null</code> — the platform intentionally hides all widget details</li>
+      <li>The source account is not exposed in any API response — confirmed via HAR analysis. The <code>viz.inaccessible</code> visualization is a static component with a hardcoded message</li>
+      <li>The amber banner shows the count of affected widgets, lists their names, and displays the dashboard owner's email (from <code>entity.owner.email</code>) as the contact for account identification</li>
+    </ul>
+  </div>
+
   <h2>Key Files Reference</h2>
   <div class="tech-section">
     <table>
       <tr><th>File</th><th>Purpose</th></tr>
-      <tr><td><code>early-wrap.js</code></td><td>Synchronous fetch/XHR wrapping (main world, document_start)</td></tr>
-      <tr><td><code>page-script.js</code></td><td>Debug info collection, fallback fetch/XHR wrapping</td></tr>
-      <tr><td><code>content.js</code></td><td>Message bridge (main world ↔ service worker), SPA navigation detection</td></tr>
-      <tr><td><code>background.js</code></td><td>Service worker, message routing, request buffering, debug info caching</td></tr>
-      <tr><td><code>dist/App.js</code></td><td>Main React app, Redux wiring, request processing</td></tr>
+      <tr><td><code>early-wrap.js</code></td><td>Synchronous fetch/XHR wrapping (main world, document_start), call stack capture</td></tr>
+      <tr><td><code>page-script.js</code></td><td>Debug info collection, fallback fetch/XHR wrapping, widget highlight handler</td></tr>
+      <tr><td><code>content.js</code></td><td>Message bridge (main world ↔ service worker), SPA navigation detection, widget highlight forwarding</td></tr>
+      <tr><td><code>background.js</code></td><td>Service worker, message routing, request buffering, debug info caching, widget highlight routing</td></tr>
+      <tr><td><code>dist/App.js</code></td><td>Main React app, Redux wiring, request processing, dashboard widget map extraction</td></tr>
       <tr><td><code>dist/state/actionCreators.js</code></td><td>Redux reducers (request state, selection, filters)</td></tr>
       <tr><td><code>dist/state/rootSlice.js</code></td><td>Redux slice definition and initial state</td></tr>
       <tr><td><code>dist/components/Navigation.js</code></td><td>Tab nav, Clear Log, Export, filters, User Guide button</td></tr>
-      <tr><td><code>dist/components/RequestsPage.js</code></td><td>Left/right panel layout, search within result, error/owning team banners</td></tr>
+      <tr><td><code>dist/components/RequestsPage.js</code></td><td>Left/right panel layout, search within result, banners (owning team, widget, error, inaccessible), Locate on Page button</td></tr>
       <tr><td><code>dist/components/Log.js</code></td><td>Result list with sorting, select all, search filter</td></tr>
       <tr><td><code>dist/components/LogEntry.js</code></td><td>Individual result row with live timer, status colors</td></tr>
       <tr><td><code>dist/components/ResponseDataSection.js</code></td><td>JSON rendering (react-json-view, clipboard disabled)</td></tr>
       <tr><td><code>dist/components/DebugInfoPage.js</code></td><td>Debug Mode tab UI</td></tr>
       <tr><td><code>dist/utils/graphql/buildGraphqlRequests.js</code></td><td>Parse GraphQL request/response into structured objects</td></tr>
       <tr><td><code>dist/utils/nrql/buildNrqlRequests.js</code></td><td>Parse NRQL request/response</td></tr>
-      <tr><td><code>dist/utils/nrql/extractNrqlFromGraphql.js</code></td><td>Extract embedded NRQL from GraphQL requests</td></tr>
+      <tr><td><code>dist/utils/nrql/extractNrqlFromGraphql.js</code></td><td>Extract embedded NRQL from GraphQL requests, widget hint extraction</td></tr>
       <tr><td><code>dist/App.css</code></td><td>All styles (must regenerate <code>App.css.proxy.js</code> after changes)</td></tr>
       <tr><td><code>dist/App.css.proxy.js</code></td><td>Snowpack CSS proxy — inlines CSS as JS string. <strong>Must be regenerated</strong> after any CSS edit.</td></tr>
     </table>

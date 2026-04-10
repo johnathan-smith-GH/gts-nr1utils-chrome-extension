@@ -4,7 +4,7 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 
 Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 Debug Mode panel, and information scattered across the New Relic UI into a single side panel.
 
-**Version:** 1.7.0
+**Version:** 1.8.0
 
 ## Features
 
@@ -19,6 +19,10 @@ Consolidates troubleshooting workflows that typically require juggling browser d
 - **Multi-Account Detection** — Warns when NRQL is querying more than one account ID, which can give insight into visualizations that are querying more than one account and help identify a customer user's lack of access to all involved accounts.
 - **Owning Team Identification** — Extracts and displays the owning team when an `owningTeam` field is found in the JSON response, for faster escalation. This banner only appears when the field is present — not all responses include it.
 - **Search & Filter** — Full-text search across queries, variables, and responses. Filter by errors only or timeouts only.
+- **Dashboard Widget Correlation** — Matches captured NRQL results to their corresponding dashboard widgets by comparing query text against the dashboard entity definition. Shows a purple "Dashboard Widget" banner with the widget title, page name, and widget ID. Widget names are also searchable in the filter.
+- **Locate on Page** — When a NRQL result matches a dashboard widget, a "Locate on Page" button scrolls to and highlights the widget on the page with a purple overlay.
+- **Inaccessible Widget Detection** — Detects dashboard widgets the user can't access and shows an amber banner listing affected widget names and directing to the dashboard owner for account identification.
+- **Source Component Tracing** — Captures call stacks at fetch intercept time to identify the React component that initiated a request, shown as a fallback "Source Component" banner when widget map matching is unavailable.
 - **Export** — Select results and export as clean JSON with full context (query, variables, response, timing, metadata).
 - **Debug Mode** — Displays platform info (version, region, user ID, account ID), subscribed nerdpack details, and current nerdlet metadata. Updates on SPA navigation.
 

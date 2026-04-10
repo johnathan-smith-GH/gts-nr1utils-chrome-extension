@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.8.0
+- Add dashboard widget correlation: match NRQL results to widgets by query text
+- Add "Locate on Page" button to scroll to and highlight matched widgets
+- Add inaccessible widget detection with amber warning banner
+- Add call stack capture for source component tracing as fallback correlation
+- Fix dark mode pill colors in User Guide
+- Widget names are now searchable in the filter
+- Update User Guide and Under The Hood documentation
+
 ## 1.7.0
 - Fix status badges to accurately reflect extension behavior: error responses show red query pill with green timing pill, timeouts show both red
 

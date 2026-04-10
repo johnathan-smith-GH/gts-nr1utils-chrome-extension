@@ -186,9 +186,14 @@
     <p>When applicable, information banners appear at the top of the detail view in the following order:</p>
     <ul>
       <li><strong>Owning Team</strong> (blue left border) — Shows the team responsible for the query, extracted from the <code>owningTeam</code> field in the JSON response. This banner only appears when the field is present in the response — not all responses include owning team information.</li>
+      <li><strong>Dashboard Widget</strong> (purple left border) — When a NRQL result matches a dashboard widget, shows the widget title, page name, and widget ID. Matched by comparing normalized query text against the dashboard entity definition.</li>
+      <li><strong>Source Component</strong> (purple left border) — When no widget match is available, shows the React component name that initiated the request, captured from the call stack at fetch time.</li>
       <li><strong>Account IDs Being Queried</strong> (green left border) — Lists the account IDs found in the response's <code>account_ids</code> arrays.</li>
       <li><strong>Error</strong> (red left border) — Displays error messages from the response, making them immediately visible without scrolling.</li>
     </ul>
+
+    <h3>Locate on Page</h3>
+    <p>When a NRQL result is matched to a dashboard widget, a <span class="pill pill-teal">LOCATE ON PAGE</span> button appears in the toolbar next to "Copy JSON to Clipboard". Clicking it scrolls the page to the corresponding widget and highlights it with a purple overlay that fades after 2 seconds.</p>
 
     <h3>Raw JSON</h3>
     <p>The full request object is displayed as formatted JSON, exactly as it would appear in an exported file. This includes the query, variables, response, errors, timing, and all metadata.</p>
@@ -247,6 +252,27 @@
 
   <div class="section">
     <p>For a deeper look into the behavior of these features, see the <span style="display:inline-block;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;background-color:#d4a017 !important;color:#fff;border:none;">Under The Hood</span> button at the top left of this guide.</p>
+  </div>
+
+  <h2>Widget Correlation</h2>
+  <div class="section">
+    <p>When viewing a New Relic dashboard, the extension automatically matches captured NRQL results to the dashboard widgets that generated them.</p>
+    <h3>How It Works</h3>
+    <ul>
+      <li>The extension captures the <code>GetDashboardEntityQuery</code> response, which contains every widget's title, ID, page name, and NRQL queries.</li>
+      <li>When you click on a NRQL result, the extension compares the captured query text against the widget definitions to find a match.</li>
+      <li>Matching uses exact comparison first, then falls back to substring containment to handle cases where NR1 modifies query aliases at runtime.</li>
+    </ul>
+    <h3>Searching by Widget Name</h3>
+    <p>The search filter also matches against widget titles. For example, searching for "App Usage" will find the NRQL result that corresponds to the "App Usage" widget on the dashboard.</p>
+  </div>
+
+  <h2>Inaccessible Widgets</h2>
+  <div class="section">
+    <p>When a dashboard contains widgets that were added from an account the current user does not have access to, an amber warning banner appears in the NRQL tab listing the affected widget names.</p>
+    <div class="note">
+      <strong>Note:</strong> The source account for inaccessible widgets is not exposed by the New Relic platform. The NerdGraph API returns empty configuration data for these widgets, so the extension cannot identify which account is involved. To determine the source account, contact the dashboard owner or an admin who can view the widget configuration.
+    </div>
   </div>
 
   <h2>Known Limitations</h2>
