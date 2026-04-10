@@ -632,18 +632,23 @@ body {
 }
 
 .App-dashboardNotice {
-  padding: 8px 18px;
-  font-size: 11px;
-  color: #78716c;
-  font-style: italic;
+  padding: 10px 18px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #555;
   border-bottom: 1px solid var(--border-color);
-  background-color: rgba(75, 128, 104, 0.04);
+  border-left: 3px solid var(--accent-color);
+  background-color: rgba(75, 128, 104, 0.06);
+}
+
+.App-dashboardNotice strong {
+  color: var(--accent-color);
 }
 
 @media (prefers-color-scheme: dark) {
   .App-dashboardNotice {
-    color: #a8a29e;
-    background-color: rgba(130, 210, 170, 0.04);
+    color: #ccc;
+    background-color: rgba(130, 210, 170, 0.06);
   }
 }
 
