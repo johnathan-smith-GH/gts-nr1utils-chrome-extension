@@ -4,7 +4,7 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 
 Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 Debug Mode panel, and information scattered across the New Relic UI into a single side panel.
 
-**Version:** 1.8.1
+**Version:** 1.8.2
 
 ## Features
 
@@ -20,7 +20,8 @@ Consolidates troubleshooting workflows that typically require juggling browser d
 - **Owning Team Identification** — Extracts and displays the owning team when an `owningTeam` field is found in the JSON response, for faster escalation. This banner only appears when the field is present — not all responses include it.
 - **Search & Filter** — Full-text search across queries, variables, and responses. Filter by errors only or timeouts only.
 - **Dashboard Widget Correlation** — Matches captured NRQL results to their corresponding dashboard widgets by comparing query text against the dashboard entity definition. Shows a purple "Dashboard Widget" banner with the widget title, page name, and widget ID. Widget names are also searchable in the filter.
-- **Locate on Page** — When a NRQL result matches a dashboard widget, a "Locate on Page" button scrolls to and highlights the widget on the page with a purple overlay.
+- **Locate on Page** — When a NRQL result matches a dashboard widget, a "Locate on Page" button scrolls to and highlights the widget on the page with a purple overlay. For widgets below the fold, the extension automatically scrolls the dashboard to trigger lazy rendering before highlighting.
+- **Dashboard Widget Placeholders** — Grey "defined" entries appear in the NRQL results for widget queries not yet captured as network requests. These are replaced with live results as widgets load via "Locate on Page" or manual scrolling.
 - **Inaccessible Widget Detection** — Detects dashboard widgets the user can't access and shows an amber banner listing affected widget names and directing to the dashboard owner for account identification.
 - **Source Component Tracing** — Captures call stacks at fetch intercept time to identify the React component that initiated a request, shown as a fallback "Source Component" banner when widget map matching is unavailable.
 - **Export** — Select results and export as clean JSON with full context (query, variables, response, timing, metadata).

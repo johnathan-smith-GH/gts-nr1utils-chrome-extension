@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.2
+- Backfill CHANGELOG with all 1.8.0 features that were missing (placeholder entries, dashboard notice, overlay fixes, widget map merging, etc.)
+- Add Dashboard Widget Placeholders to README feature list
+- Update Locate on Page README description to mention scroll-to-lazy-load
+
 ## 1.8.1
 - Fix Locate on Page for lazy-loaded widgets by moving highlight logic to content script
 - Add scroll-to-lazy-load: incrementally scrolls dashboard to trigger widget rendering, then highlights
@@ -9,12 +14,22 @@
 - Rename 'Account IDs Being Queried' to 'Account ID Identifiers Being Queried'
 
 ## 1.8.0
-- Add dashboard widget correlation: match NRQL results to widgets by query text
-- Add "Locate on Page" button to scroll to and highlight matched widgets
-- Add inaccessible widget detection with amber warning banner
-- Add call stack capture for source component tracing as fallback correlation
+- Add dashboard widget correlation: match NRQL requests to widgets by comparing NRQL query text from GraphQL dashboard responses
+- Add "Locate on Page" feature: button to scroll to and highlight matched dashboard widgets with a purple overlay
+- Add grey placeholder entries for widget-defined NRQL queries not yet captured as network requests
+- Add "Dashboard detected" notice banner explaining grey entries and how to load them
+- Add inaccessible widget detection with amber warning banner and dashboard owner info
+- Add call stack capture for source component tracing as fallback widget correlation
+- Add fuzzy matching and widget title search in the log filter
+- Add widget hint extraction from GraphQL variables (entity GUID, widget ID, dashboard GUID)
+- Trigger NR1 lazy loading after Locate on Page scroll via IntersectionObserver nudge
+- Merge widget maps instead of replacing to support multi-tab dashboards
+- Clear widget map (grey placeholders) when Clear Log is clicked
+- Multiple fallback strategies for finding widgets in the DOM (text, innerText, React fiber, TreeWalker)
+- Fix Locate on Page overlay positioning and scroll-settle detection
+- Fix toolbar button layout to prevent Locate on Page from being hidden
+- Fix timing and memoization issues with widgetMap re-render propagation
 - Fix dark mode pill colors in User Guide
-- Widget names are now searchable in the filter
 - Update User Guide and Under The Hood documentation
 
 ## 1.7.0
