@@ -161,7 +161,19 @@ const addPendingGqlRequest = (state, action) => {
 };
 
 const addPendingNrqlRequest = (state, action) => {
-  state.nrqlRequests = state.nrqlRequests.concat(action.payload);
+  var newReqs = action.payload;
+  var wm = state.widgetMap;
+  if (wm && wm.length) {
+    newReqs.forEach(function (req) {
+      if (!req._matchedWidget && req.query) {
+        var matched = matchNrqlToWidget(req.query, wm);
+        if (matched) {
+          req._matchedWidget = { title: matched.title, widgetId: matched.widgetId, pageName: matched.pageName };
+        }
+      }
+    });
+  }
+  state.nrqlRequests = state.nrqlRequests.concat(newReqs);
   return state;
 };
 
@@ -178,7 +190,15 @@ const completeRequest = (state, action) => {
   if (!found) {
     for (var j = 0; j < state.nrqlRequests.length; j++) {
       if (state.nrqlRequests[j].requestId === requestId) {
-        state.nrqlRequests[j] = Object.assign({}, state.nrqlRequests[j], updates);
+        var merged = Object.assign({}, state.nrqlRequests[j], updates);
+        // Ensure widget matching on completion
+        if (!merged._matchedWidget && merged.query && state.widgetMap && state.widgetMap.length) {
+          var wMatch = matchNrqlToWidget(merged.query, state.widgetMap);
+          if (wMatch) {
+            merged._matchedWidget = { title: wMatch.title, widgetId: wMatch.widgetId, pageName: wMatch.pageName };
+          }
+        }
+        state.nrqlRequests[j] = merged;
         break;
       }
     }
