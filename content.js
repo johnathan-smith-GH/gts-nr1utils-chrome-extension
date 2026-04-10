@@ -59,7 +59,9 @@
         requestId: event.data.requestId,
         url: event.data.url,
         requestBody: event.data.requestBody,
-        startTime: event.data.startTime
+        startTime: event.data.startTime,
+        componentHint: event.data.componentHint || null,
+        stackSummary: event.data.stackSummary || null
       });
     }
 

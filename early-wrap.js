@@ -16,13 +16,49 @@
     return 'nr1-' + (++requestCounter) + '-' + Date.now();
   }
 
+  /**
+   * Capture a call stack and extract component-relevant hints.
+   * Returns { componentHint, stackSummary } or null.
+   */
+  function captureComponentHint() {
+    try {
+      var stack = new Error().stack || '';
+      var lines = stack.split('\n');
+      var componentPatterns = /Widget|Chart|Billboard|Table|Line|Bar|Pie|Nrql|Dashboard|Visualization|Area|Funnel|Heatmap|Histogram|Markdown|Scatter|Stacked/i;
+      var skipPatterns = /early-wrap\.js|page-script\.js|content\.js/;
+      var componentHint = null;
+      var meaningful = [];
+
+      for (var i = 1; i < lines.length && meaningful.length < 5; i++) {
+        var line = lines[i].trim();
+        if (!line || skipPatterns.test(line)) continue;
+        meaningful.push(line);
+        if (!componentHint && componentPatterns.test(line)) {
+          // Extract function/component name from the stack frame
+          var nameMatch = line.match(/at\s+([^\s(]+)/);
+          if (nameMatch) componentHint = nameMatch[1];
+        }
+      }
+
+      if (!componentHint && meaningful.length === 0) return null;
+      return {
+        componentHint: componentHint || null,
+        stackSummary: meaningful.join('\n')
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
   function sendRequestStart(data) {
     window.postMessage({
       type: 'NR1_UTILS_REQUEST_START',
       requestId: data.requestId,
       url: data.url,
       requestBody: data.requestBody,
-      startTime: data.startTime
+      startTime: data.startTime,
+      componentHint: data.componentHint || null,
+      stackSummary: data.stackSummary || null
     }, '*');
   }
 
@@ -64,6 +100,7 @@
     var absStartTime = Date.now();
     var requestId = genRequestId();
     var requestBodyPromise = readBodyAsText(rawBody);
+    var stackInfo = captureComponentHint();
 
     // Phase 1: Send request start immediately
     requestBodyPromise.then(function (reqBody) {
@@ -71,7 +108,9 @@
         requestId: requestId,
         url: url,
         requestBody: reqBody,
-        startTime: absStartTime
+        startTime: absStartTime,
+        componentHint: stackInfo ? stackInfo.componentHint : null,
+        stackSummary: stackInfo ? stackInfo.stackSummary : null
       });
     });
 
@@ -134,6 +173,7 @@
       var absStartTime = Date.now();
       var requestId = genRequestId();
       var bodyPromise = readBodyAsText(body);
+      var xhrStackInfo = captureComponentHint();
 
       // Phase 1: Send request start immediately
       bodyPromise.then(function (reqBody) {
@@ -141,7 +181,9 @@
           requestId: requestId,
           url: xhr.__nr1_url,
           requestBody: reqBody,
-          startTime: absStartTime
+          startTime: absStartTime,
+          componentHint: xhrStackInfo ? xhrStackInfo.componentHint : null,
+          stackSummary: xhrStackInfo ? xhrStackInfo.stackSummary : null
         });
       });
 

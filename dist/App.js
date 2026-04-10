@@ -194,7 +194,7 @@ const App = props => {
             var nameMatch = queryText.match(/(query|mutation|subscription)\s+([\w]+)/);
             var name = nameMatch ? nameMatch[2] : queryText.slice(0, 24);
             var type = nameMatch ? nameMatch[1].toUpperCase() : 'QUERY';
-            return {
+            var pendingObj = {
               requestId: data.requestId,
               id: payloadRequest.id,
               query: queryText,
@@ -206,6 +206,9 @@ const App = props => {
               status: 'pending',
               timing: { startTime: data.startTime, totalTime: 0, blockedTime: 0 }
             };
+            if (data.componentHint) pendingObj.componentHint = data.componentHint;
+            if (data.stackSummary) pendingObj.stackSummary = data.stackSummary;
+            return pendingObj;
           });
         } catch (e) {
           pendingRequests = [{
@@ -239,7 +242,7 @@ const App = props => {
           var fromMatch = nrqlQuery.match(/from\s+(\S+)/i);
           nrqlName = fromMatch ? fromMatch[1] : nrqlQuery.slice(0, 24) || 'Pending NRQL';
         } catch (e) {}
-        addPendingNrqlRequest([{
+        var nrqlPendingObj = {
           requestId: data.requestId,
           id: -1,
           variables: nrqlVars,
@@ -250,7 +253,10 @@ const App = props => {
           name: nrqlName,
           status: 'pending',
           timing: { startTime: data.startTime, totalTime: 0, blockedTime: 0 }
-        }]);
+        };
+        if (data.componentHint) nrqlPendingObj.componentHint = data.componentHint;
+        if (data.stackSummary) nrqlPendingObj.stackSummary = data.stackSummary;
+        addPendingNrqlRequest([nrqlPendingObj]);
       }
     } catch (e) {}
   };

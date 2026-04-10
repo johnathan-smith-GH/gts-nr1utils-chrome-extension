@@ -311,20 +311,32 @@ const RequestsPage = props => {
   }, findOwningTeam(currentQuery))),
   (function () {
     var matched = matchWidgetByNrql(currentQuery, widgetMap);
-    if (!matched) return null;
-    return /*#__PURE__*/React.createElement("div", {
-      className: "App-widgetHintsBanner"
-    }, /*#__PURE__*/React.createElement("span", {
-      className: "App-widgetHintsLabel"
-    }, "Dashboard Widget:"), /*#__PURE__*/React.createElement("span", {
-      className: "App-widgetHintsItem"
-    }, /*#__PURE__*/React.createElement("strong", null, "Title: "), matched.title || '(untitled)'),
-    matched.pageName && /*#__PURE__*/React.createElement("span", {
-      className: "App-widgetHintsItem"
-    }, /*#__PURE__*/React.createElement("strong", null, "Page: "), matched.pageName),
-    /*#__PURE__*/React.createElement("span", {
-      className: "App-widgetHintsItem"
-    }, /*#__PURE__*/React.createElement("strong", null, "Widget ID: "), matched.widgetId));
+    if (matched) {
+      return /*#__PURE__*/React.createElement("div", {
+        className: "App-widgetHintsBanner"
+      }, /*#__PURE__*/React.createElement("span", {
+        className: "App-widgetHintsLabel"
+      }, "Dashboard Widget:"), /*#__PURE__*/React.createElement("span", {
+        className: "App-widgetHintsItem"
+      }, /*#__PURE__*/React.createElement("strong", null, "Title: "), matched.title || '(untitled)'),
+      matched.pageName && /*#__PURE__*/React.createElement("span", {
+        className: "App-widgetHintsItem"
+      }, /*#__PURE__*/React.createElement("strong", null, "Page: "), matched.pageName),
+      /*#__PURE__*/React.createElement("span", {
+        className: "App-widgetHintsItem"
+      }, /*#__PURE__*/React.createElement("strong", null, "Widget ID: "), matched.widgetId));
+    }
+    // Fallback: show component hint from call stack if available
+    if (currentQuery.componentHint) {
+      return /*#__PURE__*/React.createElement("div", {
+        className: "App-widgetHintsBanner"
+      }, /*#__PURE__*/React.createElement("span", {
+        className: "App-widgetHintsLabel"
+      }, "Source Component:"), /*#__PURE__*/React.createElement("span", {
+        className: "App-widgetHintsItem"
+      }, currentQuery.componentHint));
+    }
+    return null;
   })(),
   findAccountIds(currentQuery).length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "App-accountIdBanner"

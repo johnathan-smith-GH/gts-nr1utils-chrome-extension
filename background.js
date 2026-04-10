@@ -191,7 +191,9 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
         requestId: message.requestId,
         url: message.url,
         requestBody: message.requestBody,
-        startTime: message.startTime
+        startTime: message.startTime,
+        componentHint: message.componentHint || null,
+        stackSummary: message.stackSummary || null
       });
     }
     return;
