@@ -410,7 +410,7 @@ const RequestsPage = props => {
     className: "App-accountIdBanner"
   }, /*#__PURE__*/React.createElement("span", {
     className: "App-accountIdLabel"
-  }, "Account IDs Being Queried:"), /*#__PURE__*/React.createElement("span", {
+  }, "Account ID Identifiers Being Queried:"), /*#__PURE__*/React.createElement("span", {
     className: "App-accountIdValue"
   }, findAccountIds(currentQuery).join(', '))),
   currentQuery.errors && /*#__PURE__*/React.createElement("div", {

@@ -144,78 +144,168 @@
   // Widget highlight: find and highlight a widget on the page
   // ============================================================
   function highlightWidgetOnPage(widgetTitle, widgetId) {
+    var LOG = '[NR1 Utils Locate]';
+
     // Remove any existing highlight
     var existing = document.getElementById('nr1-utils-widget-highlight');
     if (existing) existing.remove();
 
+    console.log(LOG, 'Looking for widget:', { title: widgetTitle, id: widgetId });
+
+    if (!widgetTitle) {
+      console.warn(LOG, 'No widget title provided, cannot locate');
+      return;
+    }
+
     var targetElement = null;
+    var strategyUsed = '';
+    var allElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, span, div, p, a');
+    var titleLower = widgetTitle.toLowerCase().trim();
 
-    // Strategy 1: Find by widget title text in the DOM (leaf nodes)
-    if (widgetTitle) {
-      var allElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, span, div, p, a');
-      var titleLower = widgetTitle.toLowerCase().trim();
-      for (var i = 0; i < allElements.length; i++) {
-        var el = allElements[i];
-        var text = (el.textContent || '').trim().toLowerCase();
-        if (text === titleLower && el.children.length === 0) {
-          targetElement = el;
+    // Strategy 1: Exact leaf-node textContent match
+    for (var i = 0; i < allElements.length; i++) {
+      var el = allElements[i];
+      var text = (el.textContent || '').trim().toLowerCase();
+      if (text === titleLower && el.children.length === 0) {
+        targetElement = el;
+        strategyUsed = '1: exact leaf-node textContent';
+        break;
+      }
+    }
+
+    // Strategy 2: innerText match on small elements
+    if (!targetElement) {
+      for (var j = 0; j < allElements.length; j++) {
+        var el2 = allElements[j];
+        var innerText = (el2.innerText || '').trim().toLowerCase();
+        if (innerText === titleLower && el2.offsetHeight < 100) {
+          targetElement = el2;
+          strategyUsed = '2: exact innerText on small element';
           break;
-        }
-      }
-
-      // Strategy 2: innerText match on small elements
-      if (!targetElement) {
-        for (var j = 0; j < allElements.length; j++) {
-          var el2 = allElements[j];
-          var innerText = (el2.innerText || '').trim().toLowerCase();
-          if (innerText === titleLower && el2.offsetHeight < 100) {
-            targetElement = el2;
-            break;
-          }
-        }
-      }
-
-      // Strategy 3: Search via React fiber tree for widget title in props
-      if (!targetElement) {
-        var gridItems = document.querySelectorAll('[class*="grid"], [class*="widget"], [class*="Widget"], [class*="card"], [class*="Card"], [data-testid]');
-        for (var k = 0; k < gridItems.length; k++) {
-          var gridEl = gridItems[k];
-          var fiberKey = Object.keys(gridEl).find(function (key) {
-            return key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$');
-          });
-          if (!fiberKey) continue;
-          var fiber = gridEl[fiberKey];
-          var current = fiber;
-          var maxDepth = 15;
-          while (current && maxDepth-- > 0) {
-            if (current.memoizedProps) {
-              var props = current.memoizedProps;
-              var propTitle = props.title || props.name || props.widgetTitle || '';
-              if (typeof propTitle === 'string' && propTitle.toLowerCase().trim() === titleLower) {
-                targetElement = gridEl;
-                break;
-              }
-            }
-            current = current.return;
-          }
-          if (targetElement) break;
-        }
-      }
-
-      // Strategy 4: Use TreeWalker to find title text anywhere in the DOM
-      if (!targetElement) {
-        var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-        while (walker.nextNode()) {
-          var node = walker.currentNode;
-          if (node.textContent.trim().toLowerCase() === titleLower) {
-            targetElement = node.parentElement;
-            break;
-          }
         }
       }
     }
 
-    if (!targetElement) return;
+    // Strategy 3: textContent match allowing child elements (size-bounded)
+    // NR1 widget titles often have child nodes (tooltip icons, info badges)
+    if (!targetElement) {
+      for (var k = 0; k < allElements.length; k++) {
+        var el3 = allElements[k];
+        var text3 = (el3.textContent || '').trim().toLowerCase();
+        if (text3 === titleLower && el3.offsetHeight < 60 && el3.offsetWidth < 600) {
+          targetElement = el3;
+          strategyUsed = '3: exact textContent with children (size-bounded)';
+          break;
+        }
+      }
+    }
+
+    // Strategy 4: title attribute match (handles truncated/ellipsized titles)
+    if (!targetElement) {
+      var titled = document.querySelectorAll('[title]');
+      for (var t = 0; t < titled.length; t++) {
+        var titleAttr = (titled[t].getAttribute('title') || '').trim().toLowerCase();
+        if (titleAttr === titleLower) {
+          targetElement = titled[t];
+          strategyUsed = '4: title attribute';
+          break;
+        }
+      }
+    }
+
+    // Strategy 5: aria-label match
+    if (!targetElement) {
+      var ariaLabeled = document.querySelectorAll('[aria-label]');
+      for (var a = 0; a < ariaLabeled.length; a++) {
+        var ariaLabel = (ariaLabeled[a].getAttribute('aria-label') || '').trim().toLowerCase();
+        if (ariaLabel === titleLower) {
+          targetElement = ariaLabeled[a];
+          strategyUsed = '5: aria-label';
+          break;
+        }
+      }
+    }
+
+    // Strategy 6: startsWith match on innerText (title with appended icon text)
+    if (!targetElement) {
+      var bestCandidate = null;
+      var bestLen = Infinity;
+      for (var s = 0; s < allElements.length; s++) {
+        var el6 = allElements[s];
+        var inner6 = (el6.innerText || '').trim().toLowerCase();
+        if (inner6.length > 0 && inner6.length < 200 && el6.offsetHeight < 60) {
+          if (inner6.indexOf(titleLower) === 0 && inner6.length < bestLen) {
+            bestCandidate = el6;
+            bestLen = inner6.length;
+          }
+        }
+      }
+      if (bestCandidate) {
+        targetElement = bestCandidate;
+        strategyUsed = '6: startsWith innerText';
+      }
+    }
+
+    // Strategy 7: React fiber tree search for widget title in props
+    if (!targetElement) {
+      var gridItems = document.querySelectorAll('[class*="grid"], [class*="widget"], [class*="Widget"], [class*="card"], [class*="Card"], [data-testid]');
+      for (var g = 0; g < gridItems.length; g++) {
+        var gridEl = gridItems[g];
+        var fiberKey = Object.keys(gridEl).find(function (key) {
+          return key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$');
+        });
+        if (!fiberKey) continue;
+        var fiber = gridEl[fiberKey];
+        var current = fiber;
+        var maxDepth = 15;
+        while (current && maxDepth-- > 0) {
+          if (current.memoizedProps) {
+            var fiberProps = current.memoizedProps;
+            var propTitle = fiberProps.title || fiberProps.name || fiberProps.widgetTitle || '';
+            if (typeof propTitle === 'string' && propTitle.toLowerCase().trim() === titleLower) {
+              targetElement = gridEl;
+              strategyUsed = '7: React fiber props';
+              break;
+            }
+          }
+          current = current.return;
+        }
+        if (targetElement) break;
+      }
+    }
+
+    // Strategy 8: TreeWalker to find title text in any text node
+    if (!targetElement) {
+      var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) {
+        var node = walker.currentNode;
+        if (node.textContent.trim().toLowerCase() === titleLower) {
+          targetElement = node.parentElement;
+          strategyUsed = '8: TreeWalker text node';
+          break;
+        }
+      }
+    }
+
+    if (!targetElement) {
+      console.warn(LOG, 'Could not find widget title in DOM:', JSON.stringify(widgetTitle));
+      // Log close matches for debugging
+      var close = [];
+      for (var d = 0; d < allElements.length; d++) {
+        var dt = (allElements[d].innerText || '').trim().toLowerCase();
+        if (dt.length > 0 && dt.length < 100 && titleLower.length >= 6 && dt.indexOf(titleLower.slice(0, 6)) !== -1) {
+          close.push({ tag: allElements[d].tagName, text: dt, children: allElements[d].children.length, h: allElements[d].offsetHeight });
+        }
+      }
+      if (close.length > 0) {
+        console.warn(LOG, 'Closest DOM matches:', close.slice(0, 10));
+      } else {
+        console.warn(LOG, 'No elements found containing even the first 6 chars of the title');
+      }
+      return;
+    }
+
+    console.log(LOG, 'Found via strategy:', strategyUsed, targetElement);
 
     // Walk up to find the widget container (the chart/visualization wrapper)
     // Look for a parent that looks like a widget card (has reasonable size)

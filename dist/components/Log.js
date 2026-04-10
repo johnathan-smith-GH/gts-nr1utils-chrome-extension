@@ -109,7 +109,7 @@ const Log = props => {
     onChange: updateLogFilter
   })), widgetMap && widgetMap.length > 0 && widgetPlaceholders.length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "App-dashboardNotice"
-  }, /*#__PURE__*/React.createElement("strong", null, "Dashboard detected"), " \u2014 grey entries in results below are widget-defined queries not yet captured as network requests. They will be replaced with live results as widgets are loaded by scrolling through the dashboard."),
+  }, /*#__PURE__*/React.createElement("strong", null, "Dashboard detected"), " \u2014 grey entries in results below are widget-defined queries not yet captured as network requests. They will be replaced with live results as widgets are loaded by using the 'Locate on page' within the gray entry, or by scrolling through the dashboard."),
   multiAccountResults.length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "App-multiAccountBanner"
   }, /*#__PURE__*/React.createElement("span", {

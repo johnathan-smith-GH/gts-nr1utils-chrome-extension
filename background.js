@@ -67,14 +67,32 @@ chrome.runtime.onConnect.addListener(function (port) {
     }
 
     if (message.action === 'HIGHLIGHT_WIDGET') {
+      console.log('[NR1 Utils bg] HIGHLIGHT_WIDGET received:', message.widgetTitle);
       chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
         if (tabs[0]) {
+          console.log('[NR1 Utils bg] Sending to tab:', tabs[0].id, tabs[0].url);
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'HIGHLIGHT_WIDGET',
             widgetTitle: message.widgetTitle,
             widgetId: message.widgetId,
             pageName: message.pageName
-          }).catch(function () {});
+          }).catch(function (err) {
+            console.warn('[NR1 Utils bg] sendMessage failed:', err.message || err);
+            // Fallback: try all NR tabs
+            chrome.tabs.query({ url: '*://*.newrelic.com/*' }, function (nrTabs) {
+              for (var i = 0; i < nrTabs.length; i++) {
+                console.log('[NR1 Utils bg] Fallback trying tab:', nrTabs[i].id, nrTabs[i].url);
+                chrome.tabs.sendMessage(nrTabs[i].id, {
+                  action: 'HIGHLIGHT_WIDGET',
+                  widgetTitle: message.widgetTitle,
+                  widgetId: message.widgetId,
+                  pageName: message.pageName
+                }).catch(function () {});
+              }
+            });
+          });
+        } else {
+          console.warn('[NR1 Utils bg] No active tab found');
         }
       });
       return;
