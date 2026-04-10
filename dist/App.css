@@ -605,6 +605,22 @@ body {
   border-bottom: 1px solid var(--border-color);
 }
 
+.App-dashboardNotice {
+  padding: 8px 18px;
+  font-size: 11px;
+  color: #78716c;
+  font-style: italic;
+  border-bottom: 1px solid var(--border-color);
+  background-color: rgba(75, 128, 104, 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-dashboardNotice {
+    color: #a8a29e;
+    background-color: rgba(130, 210, 170, 0.04);
+  }
+}
+
 .App-inaccessibleBanner {
   padding: 12px 20px;
   background-color: #fef9ee;
