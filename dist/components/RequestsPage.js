@@ -389,4 +389,4 @@ const RequestsPage = props => {
   }, JSON.stringify(currentQuery, null, 2))));
 };
 
-export default /*#__PURE__*/React.memo(RequestsPage);
+export default RequestsPage;
