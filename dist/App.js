@@ -73,6 +73,7 @@ function extractWidgetMapFromDashboard(graphqlRequests) {
     if (!resp || !resp.data) continue;
     var entity = resp.data.actor && resp.data.actor.entity;
     if (!entity || !entity.pages) continue;
+    var dashboardAccountId = entity.accountId || null;
     for (var pi = 0; pi < entity.pages.length; pi++) {
       var page = entity.pages[pi];
       var pageName = page.name || '';
@@ -80,6 +81,8 @@ function extractWidgetMapFromDashboard(graphqlRequests) {
       for (var wi = 0; wi < page.widgets.length; wi++) {
         var w = page.widgets[wi];
         var raw = w.rawConfiguration || {};
+        var viz = w.visualization && w.visualization.id;
+        var isInaccessible = viz === 'viz.inaccessible';
         var nrqlQueries = [];
         if (raw.nrqlQueries && Array.isArray(raw.nrqlQueries)) {
           for (var qi = 0; qi < raw.nrqlQueries.length; qi++) {
@@ -92,7 +95,9 @@ function extractWidgetMapFromDashboard(graphqlRequests) {
             title: w.title || '',
             pageName: pageName,
             nrqlQueries: nrqlQueries,
-            layout: w.layout || null
+            layout: w.layout || null,
+            inaccessible: isInaccessible,
+            dashboardAccountId: dashboardAccountId
           });
         }
       }

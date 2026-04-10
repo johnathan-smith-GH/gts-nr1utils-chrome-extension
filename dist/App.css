@@ -605,6 +605,72 @@ body {
   border-bottom: 1px solid var(--border-color);
 }
 
+.App-inaccessibleBanner {
+  padding: 12px 20px;
+  background-color: #fef9ee;
+  border-left: 4px solid #d97706;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-inaccessibleBanner {
+    background-color: rgba(217, 119, 6, 0.1);
+  }
+}
+
+.App-inaccessibleLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-inaccessibleLabel {
+    color: #ddd;
+  }
+}
+
+.App-inaccessibleAccounts {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #d97706;
+  margin-bottom: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-inaccessibleAccounts {
+    color: #fbbf24;
+  }
+}
+
+.App-inaccessibleWidgets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.App-inaccessibleWidgetName {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background-color: rgba(217, 119, 6, 0.15);
+  color: #92400e;
+  font-weight: 500;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-inaccessibleWidgetName {
+    background-color: rgba(217, 119, 6, 0.2);
+    color: #fbbf24;
+  }
+}
+
 .App-locateBtn {
   color: #FFF !important;
   background-color: #7c3aed;
