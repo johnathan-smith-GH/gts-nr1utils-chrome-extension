@@ -211,27 +211,59 @@
       'border-radius: 8px',
       'box-shadow: 0 0 20px rgba(124, 58, 237, 0.4), inset 0 0 20px rgba(124, 58, 237, 0.05)',
       'transition: opacity 0.5s ease',
-      'opacity: 1'
+      'opacity: 0'
     ].join('; ');
 
     document.body.appendChild(overlay);
 
-    // Position the overlay over the container after scroll completes
-    setTimeout(function () {
+    function positionOverlay() {
       var rect = container.getBoundingClientRect();
       overlay.style.top = rect.top + 'px';
       overlay.style.left = rect.left + 'px';
       overlay.style.width = rect.width + 'px';
       overlay.style.height = rect.height + 'px';
+    }
 
-      // Fade out after 2 seconds
+    // Wait for scroll to settle by polling until position stabilizes
+    var lastTop = -1;
+    var stableCount = 0;
+    var pollInterval = setInterval(function () {
+      var rect = container.getBoundingClientRect();
+      if (Math.abs(rect.top - lastTop) < 1) {
+        stableCount++;
+      } else {
+        stableCount = 0;
+      }
+      lastTop = rect.top;
+      positionOverlay();
+
+      // Position is stable for 3 consecutive checks (150ms) — show the overlay
+      if (stableCount >= 3) {
+        clearInterval(pollInterval);
+        overlay.style.opacity = '1';
+
+        // Fade out after 2 seconds
+        setTimeout(function () {
+          overlay.style.opacity = '0';
+          setTimeout(function () {
+            overlay.remove();
+          }, 500);
+        }, 2000);
+      }
+    }, 50);
+
+    // Safety: clear poll after 2 seconds if scroll never settles
+    setTimeout(function () {
+      clearInterval(pollInterval);
+      positionOverlay();
+      overlay.style.opacity = '1';
       setTimeout(function () {
         overlay.style.opacity = '0';
         setTimeout(function () {
           overlay.remove();
         }, 500);
       }, 2000);
-    }, 400);
+    }, 2000);
   }
 
   // ============================================================
