@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.7
+## 1.7.0
 - Fix status badges to accurately reflect extension behavior: error responses show red query pill with green timing pill, timeouts show both red
 
 ## 1.6
