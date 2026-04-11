@@ -341,9 +341,14 @@
     <p>The Debug Mode tab displays information about the current New Relic page:</p>
     <ul>
       <li><strong>Platform Info</strong> — Platform version, environment, region, user ID, and account ID</li>
-      <li><strong>Debug Info</strong> — Current nerdlet, nerdpack details, and SDK versions</li>
+      <li><strong>Debug Info</strong> — Current nerdlet, nerdpack details, SDK versions, and entity GUID (when present)</li>
       <li><strong>Associated Teams</strong> — Team ownership information for the current nerdpack</li>
     </ul>
+
+    <h3>Entity GUID Decoding</h3>
+    <p>When the current page involves a New Relic entity, Debug Mode displays the entity GUID along with its decoded details: <strong>Account ID</strong>, <strong>Domain</strong> (e.g., APM, VIZ, BROWSER), <strong>Type</strong> (e.g., APPLICATION, DASHBOARD), and <strong>Domain ID</strong>.</p>
+    <p>This is particularly useful when encountering a <em>"This entity isn't available in this account"</em> error — the decoded Account ID reveals which account the entity belongs to, without needing to manually decode the base64 GUID shown on the page.</p>
+
     <p>Debug info refreshes automatically when navigating between NR1 pages.</p>
     <div class="note">
       <strong>Note:</strong> Debug info may take a few seconds to load after navigating to a new page. If it doesn't appear, try refreshing the page.

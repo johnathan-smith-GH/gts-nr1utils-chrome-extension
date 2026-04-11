@@ -289,6 +289,16 @@
       <li>Subscribes to <code>window.UNSTABLE_app_shell.navigationStateContext</code> via <code>.subscribe()</code></li>
       <li>Polls for <code>UNSTABLE_app_shell</code> availability (500ms intervals, up to 30 seconds)</li>
       <li>Tracks <code>mainNerdletId</code> and <code>mainEntityGuid</code></li>
+      <li>URL path fallback: if <code>mainEntityGuid</code> is null (e.g., entity is inaccessible), extracts the entity GUID from URL path segments by attempting base64 decode and validating the <code>accountId|DOMAIN|TYPE|domainId</code> pattern</li>
+    </ul>
+  </div>
+
+  <h3>Entity GUID Decoding</h3>
+  <div class="tech-section">
+    <ul>
+      <li>New Relic entity GUIDs are base64-encoded strings in the format <code>accountId|domain|type|domainId</code> (e.g., <code>MzY1NTg1NnxWSVp8REFTSEJPQVJEfGRhOjEyMzc0OTc5</code> decodes to <code>3655856|VIZ|DASHBOARD|da:12374979</code>)</li>
+      <li><code>decodeEntityGuid()</code> in <code>DebugInfoPage.js</code> uses <code>atob()</code> to decode, splits by <code>|</code>, validates first segment is numeric and has exactly 4 parts</li>
+      <li>Decoded fields (Account ID, Domain, Type, Domain ID) are displayed as indented rows below the raw Entity GUID in the Debug Info table</li>
     </ul>
   </div>
 

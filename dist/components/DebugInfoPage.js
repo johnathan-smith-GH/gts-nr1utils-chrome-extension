@@ -2,6 +2,18 @@ import React from '../../snowpack/pkg/react.js';
 
 const el = React.createElement;
 
+function decodeEntityGuid(guid) {
+  if (!guid || typeof guid !== 'string') return null;
+  try {
+    var decoded = atob(guid);
+    var parts = decoded.split('|');
+    if (parts.length === 4 && /^\d+$/.test(parts[0])) {
+      return { accountId: parts[0], domain: parts[1], type: parts[2], domainId: parts[3] };
+    }
+  } catch (e) {}
+  return null;
+}
+
 const TableRow = (key, value, linkOptions) => {
   if (value === null || value === undefined || value === '') {
     return null;
@@ -71,6 +83,8 @@ const DebugInfoPage = (props) => {
     }
   }
 
+  var decodedGuid = debugEntityGuid ? decodeEntityGuid(debugEntityGuid) : null;
+
   return el("div", { className: "DebugMode-container" },
 
     // Platform Info
@@ -94,6 +108,10 @@ const DebugInfoPage = (props) => {
           TableRow("Nerdpack Id", nerdpackName),
           currentNerdpack ? TableRow("Nerdpack uuid", currentNerdpack.nerdpackId || nerdpackName) : null,
           debugEntityGuid ? TableRow("Entity GUID", debugEntityGuid) : null,
+          decodedGuid ? TableRow("  Account ID", decodedGuid.accountId) : null,
+          decodedGuid ? TableRow("  Domain", decodedGuid.domain) : null,
+          decodedGuid ? TableRow("  Type", decodedGuid.type) : null,
+          decodedGuid ? TableRow("  Domain ID", decodedGuid.domainId) : null,
           currentNerdpack ? TableRow("Origin", "Remote (Artifact registry)") : null,
           currentNerdpack && repoLink ? TableRow("Repo", currentNerdpack.repositoryUrl, repoLink) : null,
           currentNerdpack ? TableRow("Nerdpack Version", currentNerdpack.version) : null,

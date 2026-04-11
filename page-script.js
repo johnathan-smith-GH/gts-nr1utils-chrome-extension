@@ -591,12 +591,26 @@
         try {
           var navCtx = window.UNSTABLE_app_shell.navigationStateContext;
 
+          // Extract entity GUID from URL path as fallback
+          function entityGuidFromUrl() {
+            try {
+              var segments = window.location.pathname.split('/');
+              for (var s = 0; s < segments.length; s++) {
+                if (segments[s].length >= 16) {
+                  var decoded = atob(segments[s]);
+                  if (/^\d+\|[A-Z]+\|[A-Z_]+\|.+$/.test(decoded)) return segments[s];
+                }
+              }
+            } catch (e) {}
+            return null;
+          }
+
           // Subscribe to navigation state changes
           navCtx.subscribe(function (navState) {
             if (navState && navState.mainNerdletId) {
               var data = {
                 nerdletId: navState.mainNerdletId,
-                entityGuid: navState.mainEntityGuid || null
+                entityGuid: navState.mainEntityGuid || entityGuidFromUrl() || null
               };
               debugInfoCache.currentNerdlet = data;
               window.postMessage({
@@ -611,7 +625,7 @@
           if (currentValue && currentValue.mainNerdletId) {
             var data = {
               nerdletId: currentValue.mainNerdletId,
-              entityGuid: currentValue.mainEntityGuid || null
+              entityGuid: currentValue.mainEntityGuid || entityGuidFromUrl() || null
             };
             debugInfoCache.currentNerdlet = data;
             window.postMessage({

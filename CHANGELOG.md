@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.7
+- Add Entity GUID decoding to Debug Mode: when an entity GUID is detected, the decoded Account ID, Domain, Type, and Domain ID are displayed below it
+- Add URL path fallback for entity GUID extraction when navigation state does not provide it (e.g., "entity isn't available in this account" error pages)
+
 ## 1.8.6
 - Reorganize User Guide: group sections into Toolbar Controls, Dashboard Features; add table of contents with anchor links
 - Move Under The Hood callout to prominent position below subtitle

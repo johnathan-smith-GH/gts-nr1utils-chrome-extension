@@ -4,7 +4,7 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 
 Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 Debug Mode panel, and information scattered across the New Relic UI into a single side panel.
 
-**Version:** 1.8.6
+**Version:** 1.8.7
 
 ## Features
 
@@ -32,6 +32,7 @@ Consolidates troubleshooting workflows that typically require juggling browser d
 - **Owning Team Identification** — Extracts and displays the owning team when an `owningTeam` field is found in the JSON response, for faster escalation. This banner only appears when the field is present — not all responses include it.
 - **Source Component Tracing** — Captures call stacks at fetch intercept time to identify the React component that initiated a request, shown as a fallback "Source Component" banner when widget map matching is unavailable.
 - **Debug Mode** — Displays platform info (version, region, user ID, account ID), subscribed nerdpack details, and current nerdlet metadata. Updates on SPA navigation.
+- **Entity GUID Decoding** — When the current page has an entity GUID (from navigation state or URL path), Debug Mode automatically decodes the base64 GUID and displays the entity's account ID, domain, type, and domain ID. Useful for identifying which account an inaccessible entity belongs to.
 
 ### Search, Filter & Export
 
