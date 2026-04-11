@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.6
+- Reorganize User Guide: group sections into Toolbar Controls, Dashboard Features; add table of contents with anchor links
+- Move Under The Hood callout to prominent position below subtitle
+- Rename title from "User's Guide" to "User Guide"
+- Remove Keyboard Navigation section
+
 ## 1.8.5
 - Organize README Features into four categories: Request Capture & Monitoring, Dashboard Intelligence, Troubleshooting Context, Search/Filter & Export
 

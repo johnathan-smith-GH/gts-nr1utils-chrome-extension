@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>GTS NR1 Utils - User's Guide</title>
+  <title>GTS NR1 Utils - User Guide</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -26,7 +26,7 @@
       tr { border-color: #333; }
     }
     h1 { font-size: 28px; margin-bottom: 8px; }
-    .subtitle { color: #888; font-size: 14px; margin-bottom: 32px; }
+    .subtitle { color: #888; font-size: 14px; margin-bottom: 16px; }
     h2 { font-size: 22px; margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 2px solid #ddd; }
     @media (prefers-color-scheme: dark) { h2 { border-color: #444; } }
     h3 { font-size: 17px; margin: 24px 0 10px; color: #222; }
@@ -61,6 +61,14 @@
       border-radius: 0 4px 4px 0;
     }
     @media (prefers-color-scheme: dark) { .note { background: rgba(37,99,235,0.1); } }
+    .hood-callout {
+      background: rgba(212, 160, 23, 0.1);
+      border-left: 4px solid #d4a017;
+      padding: 12px 16px;
+      margin: 0 0 24px;
+      font-size: 14px;
+      border-radius: 0 4px 4px 0;
+    }
     hr { border: none; border-top: 1px solid #eee; margin: 32px 0; }
     .hood-btn {
       position: fixed;
@@ -100,14 +108,74 @@
     td { padding: 8px 12px; }
     tr { border-bottom: 1px solid #e8e8e8; }
     tr:last-child { border-bottom: none; }
+    .toc {
+      margin: 0 0 32px;
+      padding: 16px 20px;
+      background: #f8f8f8;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    @media (prefers-color-scheme: dark) { .toc { background: #222; } }
+    .toc ul { margin: 8px 0 0 20px; list-style: none; }
+    .toc > ul { margin-left: 0; }
+    .toc li { margin-bottom: 4px; }
+    .toc li li { margin-bottom: 2px; font-size: 13px; }
+    .toc a { color: #2563eb; text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    @media (prefers-color-scheme: dark) { .toc a { color: #60a5fa; } }
   </style>
 </head>
 <body>
   <a class="hood-btn" href="under-the-hood.html">Under The Hood</a>
-  <h1>GTS NR1 Utils - User's Guide</h1>
+  <h1>GTS NR1 Utils - User Guide</h1>
   <p class="subtitle">A Chrome extension for intercepting and inspecting NerdGraph and NRQL requests on New Relic pages.</p>
 
-  <h2>Why Use This Extension?</h2>
+  <div class="hood-callout">
+    For a deeper look into the behavior and implementation of these features, see the <a href="under-the-hood.html" style="display:inline-block;padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;background-color:#d4a017;color:#fff;text-decoration:none;">Under The Hood</a> technical reference — also accessible via the button at the top left of this page.
+  </div>
+
+  <nav class="toc">
+    <strong>Contents</strong>
+    <ul>
+      <li><a href="#why">Why Use This Extension?</a></li>
+      <li><a href="#getting-started">Getting Started</a></li>
+      <li><a href="#toolbar-controls">Toolbar Controls</a>
+        <ul>
+          <li><a href="#search-and-filters">Search &amp; Filters</a></li>
+          <li><a href="#exporting">Exporting Results</a></li>
+          <li><a href="#preserve-clear">Preserve Log &amp; Clear Log</a></li>
+        </ul>
+      </li>
+      <li><a href="#request-list">Request List (Left Panel)</a>
+        <ul>
+          <li><a href="#live-status">Live Request Status</a></li>
+          <li><a href="#sorting">Sorting</a></li>
+          <li><a href="#multi-account">Multi-Account Detection</a></li>
+          <li><a href="#selecting">Selecting Results</a></li>
+        </ul>
+      </li>
+      <li><a href="#result-detail">Result Detail (Right Panel)</a>
+        <ul>
+          <li><a href="#banners">Banners</a></li>
+          <li><a href="#raw-json">Raw JSON</a></li>
+          <li><a href="#search-within">Search Within Result</a></li>
+          <li><a href="#copy-json">Copy JSON to Clipboard</a></li>
+        </ul>
+      </li>
+      <li><a href="#dashboard-features">Dashboard Features</a>
+        <ul>
+          <li><a href="#widget-correlation">Widget Correlation</a></li>
+          <li><a href="#locate-on-page">Locate on Page</a></li>
+          <li><a href="#widget-placeholders">Widget Placeholders</a></li>
+          <li><a href="#inaccessible-widgets">Inaccessible Widgets</a></li>
+        </ul>
+      </li>
+      <li><a href="#debug-mode">Debug Mode</a></li>
+      <li><a href="#known-limitations">Known Limitations</a></li>
+    </ul>
+  </nav>
+
+  <h2 id="why">Why Use This Extension?</h2>
   <div class="section">
     <p>When troubleshooting issues on the New Relic platform, technical support engineers typically need to piece together information from multiple sources — Chrome DevTools Network tab, browser console, NR1 debug panel, NerdGraph API Explorer, and the page UI itself. This extension consolidates that workflow into a single side panel.</p>
 
@@ -130,7 +198,7 @@
     </ul>
   </div>
 
-  <h2>Getting Started</h2>
+  <h2 id="getting-started">Getting Started</h2>
   <div class="section">
     <p>Click the extension icon in Chrome's toolbar to open the side panel. The extension automatically intercepts GraphQL and NRQL network requests on any <code>*.newrelic.com</code> page.</p>
     <div class="note">
@@ -144,9 +212,34 @@
     </ul>
   </div>
 
-  <h2>Request List (Left Panel)</h2>
+  <h2 id="toolbar-controls">Toolbar Controls</h2>
   <div class="section">
-    <h3>Live Request Status</h3>
+    <h3 id="search-and-filters">Search &amp; Filters</h3>
+    <p>The <strong>"Search for results"</strong> field at the top of the left panel filters results by searching across the entire request — query text, variables, response data, errors, and all other fields. When dashboard widgets are detected, search also matches against widget titles and page names.</p>
+    <p>Additional filter toggles:</p>
+    <ul>
+      <li><strong>Errors only</strong> — Show only requests that returned errors (any request with a non-null <code>errors</code> field)</li>
+      <li><strong>Timeouts only</strong> — Show only requests that timed out (detected by searching error messages for the word "timeout")</li>
+    </ul>
+    <p>These filters can be combined with the search field and the multi-account filter.</p>
+
+    <h3 id="exporting">Exporting Results</h3>
+    <p>The <span class="pill pill-teal">EXPORT</span> button exports selected results as a JSON file.</p>
+    <ul>
+      <li>Select one or more results using the checkboxes</li>
+      <li>Click Export — a Save As dialog opens where you choose the file location and name</li>
+      <li>The default filename includes the request type and timestamp (e.g., <code>nerdgraph-requests-2026-04-08T22-15-00.json</code>)</li>
+    </ul>
+    <p>When no results are selected, the Export button is greyed out with a tooltip: <em>"Select at least one result to export."</em></p>
+
+    <h3 id="preserve-clear">Preserve Log &amp; Clear Log</h3>
+    <p>The <strong>Preserve log</strong> checkbox keeps captured requests when navigating between pages on the New Relic site. Without it, requests are cleared on each page navigation. This setting is saved to localStorage and persists across sessions.</p>
+    <p>The <span class="pill pill-red">CLEAR LOG</span> button removes all captured results from the current tab, including any grey widget placeholder entries. With Preserve Log enabled, this is the only way to clear results — they otherwise persist across page navigation within the same tab.</p>
+  </div>
+
+  <h2 id="request-list">Request List (Left Panel)</h2>
+  <div class="section">
+    <h3 id="live-status">Live Request Status</h3>
     <p>Requests appear immediately when fired, with a live status indicator. Each request shows a query pill and a timing pill:</p>
     <ul>
       <li><span class="pill pill-yellow">QUERY</span> <span class="pill pill-yellow">PENDING</span> — Request in flight. Timer counts up in real time with a pulsing animation.</li>
@@ -155,7 +248,7 @@
       <li><span class="pill pill-red">QUERY</span> <span class="pill pill-red">RESPONSE TIME</span> — Request timed out. Both pills are red.</li>
     </ul>
 
-    <h3>Sorting</h3>
+    <h3 id="sorting">Sorting</h3>
     <p>Results are automatically sorted by status priority, then by most recent start time within each group:</p>
     <ol>
       <li><strong>Pending</strong> (yellow) — Always at the top while waiting to resolve</li>
@@ -163,16 +256,10 @@
       <li><strong>Success</strong> (green) — Resolved requests without errors</li>
     </ol>
 
-    <h3>Keyboard Navigation</h3>
-    <p>Use the <strong>Arrow Up</strong> and <strong>Arrow Down</strong> keys to navigate between requests in the list. Press <strong>Enter</strong> to select and view a request's details.</p>
-
-    <h3>Search</h3>
-    <p>The <strong>"Search for results"</strong> field at the top of the left panel filters results by searching across the entire request — query text, variables, response data, errors, and all other fields. When dashboard widgets are detected, search also matches against widget titles and page names.</p>
-
-    <h3>Multi-Account Detection</h3>
+    <h3 id="multi-account">Multi-Account Detection</h3>
     <p>When results are found that query more than one account ID, a yellow notification banner appears listing the account IDs detected and the number of affected results. A toggle button lets you filter the list to show only those multi-account results.</p>
 
-    <h3>Selecting Results</h3>
+    <h3 id="selecting">Selecting Results</h3>
     <p>Each result has a checkbox for selection. Use these for exporting specific results:</p>
     <ul>
       <li><strong>Individual checkboxes</strong> — Select specific results</li>
@@ -181,11 +268,11 @@
     <p>When no results are selected, a hint message appears: <em>"Select one or more results to export."</em></p>
   </div>
 
-  <h2>Result Detail (Right Panel)</h2>
+  <h2 id="result-detail">Result Detail (Right Panel)</h2>
   <div class="section">
     <p>Click any result in the list to view its full details in the right panel.</p>
 
-    <h3>Banners</h3>
+    <h3 id="banners">Banners</h3>
     <p>When applicable, information banners appear at the top of the detail view in the following order:</p>
     <ul>
       <li><strong>Owning Team</strong> (blue left border) — Shows the team responsible for the query, extracted from the <code>owningTeam</code> field in the JSON response. This banner only appears when the field is present in the response — not all responses include owning team information.</li>
@@ -195,14 +282,10 @@
       <li><strong>Error</strong> (red left border) — Displays error messages from the response, making them immediately visible without scrolling.</li>
     </ul>
 
-    <h3>Locate on Page</h3>
-    <p>When a NRQL result is matched to a dashboard widget, a <span class="pill" style="background:#7c3aed;">LOCATE ON PAGE</span> button appears in the toolbar next to "Copy JSON to Clipboard". Clicking it scrolls the page to the corresponding widget and highlights it with a purple overlay that fades after 2 seconds.</p>
-    <p>For widgets that are below the fold and not yet rendered by New Relic (which lazy-loads widgets via IntersectionObserver), the extension automatically scrolls the dashboard incrementally to trigger rendering, then locates and highlights the widget once it appears in the DOM.</p>
-
-    <h3>Raw JSON</h3>
+    <h3 id="raw-json">Raw JSON</h3>
     <p>The full request object is displayed as formatted JSON, exactly as it would appear in an exported file. This includes the query, variables, response, errors, timing, and all metadata.</p>
 
-    <h3>Search Within Result</h3>
+    <h3 id="search-within">Search Within Result</h3>
     <p>Use the <strong>"Search within result"</strong> field to find text within the JSON:</p>
     <ul>
       <li>Matches are highlighted in <span style="background:rgba(255,255,0,0.5);padding:1px 4px;color:#000;">yellow</span></li>
@@ -211,41 +294,49 @@
       <li>Press <strong>Escape</strong> to close the search</li>
     </ul>
 
-    <h3>Copy JSON to Clipboard</h3>
+    <h3 id="copy-json">Copy JSON to Clipboard</h3>
     <p>The <span class="pill pill-teal">COPY JSON TO CLIPBOARD</span> button copies the entire result as formatted JSON. The button briefly shows "Copied!" to confirm.</p>
   </div>
 
-  <h2>Exporting Results</h2>
+  <h2 id="dashboard-features">Dashboard Features</h2>
   <div class="section">
-    <p>The <span class="pill pill-teal">EXPORT</span> button exports selected results as a JSON file.</p>
+    <p>When viewing a New Relic dashboard, the extension provides additional functionality for matching, locating, and inspecting the widgets on the page.</p>
+
+    <h3 id="widget-correlation">Widget Correlation</h3>
+    <p>The extension automatically matches captured NRQL results to the dashboard widgets that generated them.</p>
     <ul>
-      <li>Select one or more results using the checkboxes</li>
-      <li>Click Export — a Save As dialog opens where you choose the file location and name</li>
-      <li>The default filename includes the request type and timestamp (e.g., <code>nerdgraph-requests-2026-04-08T22-15-00.json</code>)</li>
+      <li>The extension captures the <code>GetDashboardEntityQuery</code> response, which contains every widget's title, ID, page name, and NRQL queries.</li>
+      <li>When you click on a NRQL result, the extension compares the captured query text against the widget definitions to find a match.</li>
+      <li>Matching uses exact comparison first, then falls back to substring containment to handle cases where NR1 modifies query aliases at runtime.</li>
     </ul>
-    <p>When no results are selected, the Export button is greyed out with a tooltip: <em>"Select at least one result to export."</em></p>
-  </div>
+    <p>The search filter also matches against widget titles. For example, searching for "App Usage" will find the NRQL result that corresponds to the "App Usage" widget on the dashboard.</p>
 
-  <h2>Filters</h2>
-  <div class="section">
+    <h3 id="locate-on-page">Locate on Page</h3>
+    <p>When a NRQL result is matched to a dashboard widget, a <span class="pill" style="background:#7c3aed;">LOCATE ON PAGE</span> button appears in the toolbar next to "Copy JSON to Clipboard". Clicking it scrolls the page to the corresponding widget and highlights it with a purple overlay that fades after 2 seconds.</p>
+    <p>For widgets that are below the fold and not yet rendered by New Relic (which lazy-loads widgets via IntersectionObserver), the extension automatically scrolls the dashboard incrementally to trigger rendering, then locates and highlights the widget once it appears in the DOM.</p>
+
+    <h3 id="widget-placeholders">Widget Placeholders</h3>
+    <p>When a dashboard is detected, the NRQL tab shows <span class="pill pill-grey">DEFINED</span> grey entries for each widget-defined NRQL query that has not yet been captured as a live network request. A <strong>"Dashboard detected"</strong> notice banner appears at the top of the results list explaining this behavior.</p>
     <ul>
-      <li><strong>Errors only</strong> — Show only requests that returned errors (any request with a non-null <code>errors</code> field)</li>
-      <li><strong>Timeouts only</strong> — Show only requests that timed out (detected by searching error messages for the word "timeout")</li>
+      <li>The extension extracts all NRQL queries from the dashboard's widget definitions (via the <code>GetDashboardEntityQuery</code> GraphQL response).</li>
+      <li>Any widget query that hasn't yet been captured as a live network request appears as a grey placeholder entry.</li>
+      <li>When the corresponding widget loads and fires its NRQL query, the grey placeholder is automatically replaced with the live result.</li>
     </ul>
-    <p>These filters can be combined with the search field and the multi-account filter.</p>
+    <h4>Loading Widget Queries</h4>
+    <p>New Relic dashboards lazy-load widgets as they scroll into view. To trigger loading for a specific widget:</p>
+    <ul>
+      <li><strong>Use "Locate on Page"</strong> — Click the <span class="pill" style="background:#7c3aed;">LOCATE ON PAGE</span> button on a grey entry. The extension scrolls to the widget, triggers its rendering, and the placeholder will be replaced once the query fires.</li>
+      <li><strong>Scroll manually</strong> — Scroll through the dashboard page to load widgets naturally.</li>
+    </ul>
+
+    <h3 id="inaccessible-widgets">Inaccessible Widgets</h3>
+    <p>When a dashboard contains widgets that were added from an account the current user does not have access to, an amber warning banner appears in the NRQL tab listing the affected widget names.</p>
+    <div class="note">
+      <strong>Note:</strong> The source account for inaccessible widgets is not exposed by the New Relic platform. The NerdGraph API returns empty configuration data for these widgets, so the extension cannot identify which account is involved. To determine the source account, contact the dashboard owner or an admin who can view the widget configuration.
+    </div>
   </div>
 
-  <h2>Preserve Log</h2>
-  <div class="section">
-    <p>The <strong>Preserve log</strong> checkbox keeps captured requests when navigating between pages on the New Relic site. Without it, requests are cleared on each page navigation. This setting is saved to localStorage and persists across sessions.</p>
-  </div>
-
-  <h2>Clear Log</h2>
-  <div class="section">
-    <p>The <span class="pill pill-red">CLEAR LOG</span> button removes all captured results from the current tab, including any grey widget placeholder entries. This is the only way to clear results — with Preserve Log enabled, they persist across page navigation within the same tab.</p>
-  </div>
-
-  <h2>Debug Mode</h2>
+  <h2 id="debug-mode">Debug Mode</h2>
   <div class="section">
     <p>The Debug Mode tab displays information about the current New Relic page:</p>
     <ul>
@@ -259,49 +350,7 @@
     </div>
   </div>
 
-  <div class="section">
-    <p>For a deeper look into the behavior of these features, see the <span style="display:inline-block;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;background-color:#d4a017 !important;color:#fff;border:none;">Under The Hood</span> button at the top left of this guide.</p>
-  </div>
-
-  <h2>Widget Correlation</h2>
-  <div class="section">
-    <p>When viewing a New Relic dashboard, the extension automatically matches captured NRQL results to the dashboard widgets that generated them.</p>
-    <h3>How It Works</h3>
-    <ul>
-      <li>The extension captures the <code>GetDashboardEntityQuery</code> response, which contains every widget's title, ID, page name, and NRQL queries.</li>
-      <li>When you click on a NRQL result, the extension compares the captured query text against the widget definitions to find a match.</li>
-      <li>Matching uses exact comparison first, then falls back to substring containment to handle cases where NR1 modifies query aliases at runtime.</li>
-    </ul>
-    <h3>Searching by Widget Name</h3>
-    <p>The search filter also matches against widget titles. For example, searching for "App Usage" will find the NRQL result that corresponds to the "App Usage" widget on the dashboard.</p>
-  </div>
-
-  <h2>Dashboard Widget Placeholders</h2>
-  <div class="section">
-    <p>When a dashboard is detected, the NRQL tab shows <span class="pill pill-grey">DEFINED</span> grey entries for each widget-defined NRQL query that has not yet been captured as a live network request. A <strong>"Dashboard detected"</strong> notice banner appears at the top of the results list explaining this behavior.</p>
-    <h3>How Placeholders Work</h3>
-    <ul>
-      <li>The extension extracts all NRQL queries from the dashboard's widget definitions (via the <code>GetDashboardEntityQuery</code> GraphQL response).</li>
-      <li>Any widget query that hasn't yet been captured as a live network request appears as a grey placeholder entry.</li>
-      <li>When the corresponding widget loads and fires its NRQL query, the grey placeholder is automatically replaced with the live result.</li>
-    </ul>
-    <h3>Loading Widget Queries</h3>
-    <p>New Relic dashboards lazy-load widgets as they scroll into view. To trigger loading for a specific widget:</p>
-    <ul>
-      <li><strong>Use "Locate on Page"</strong> — Click the <span class="pill" style="background:#7c3aed;">LOCATE ON PAGE</span> button on a grey entry. The extension scrolls to the widget, triggers its rendering, and the placeholder will be replaced once the query fires.</li>
-      <li><strong>Scroll manually</strong> — Scroll through the dashboard page to load widgets naturally.</li>
-    </ul>
-  </div>
-
-  <h2>Inaccessible Widgets</h2>
-  <div class="section">
-    <p>When a dashboard contains widgets that were added from an account the current user does not have access to, an amber warning banner appears in the NRQL tab listing the affected widget names.</p>
-    <div class="note">
-      <strong>Note:</strong> The source account for inaccessible widgets is not exposed by the New Relic platform. The NerdGraph API returns empty configuration data for these widgets, so the extension cannot identify which account is involved. To determine the source account, contact the dashboard owner or an admin who can view the widget configuration.
-    </div>
-  </div>
-
-  <h2>Known Limitations</h2>
+  <h2 id="known-limitations">Known Limitations</h2>
   <div class="section">
     <ul>
       <li>IntrospectionQuery requests to <code>nerd-graph.service.newrelic.com</code> (used by the NerdGraph API Explorer) cannot be captured due to NR's browser agent intercepting the fetch promise chain.</li>
