@@ -20,9 +20,10 @@ const TableRow = (key, value, linkOptions) => {
   }
   var valueCell;
   if (linkOptions) {
+    var linkHref = linkOptions.href || value;
     valueCell = el("td", null, el("a", {
       className: "DebugMode-link",
-      href: linkOptions.href || value,
+      href: linkHref,
       target: "_blank",
       rel: "noopener noreferrer"
     }, linkOptions.text || value));
@@ -65,6 +66,15 @@ const DebugInfoPage = (props) => {
   var repoLink = null;
   if (currentNerdpack && currentNerdpack.repositoryUrl) {
     var url = currentNerdpack.repositoryUrl;
+    // Convert SSH git URLs (git@host:org/repo.git) to HTTPS
+    var sshMatch = url.match(/^git@([^:]+):(.+?)(?:\.git)?$/);
+    if (sshMatch) {
+      url = 'https://' + sshMatch[1] + '/' + sshMatch[2];
+    } else if (url.indexOf('://') === -1) {
+      url = 'https://' + url;
+    }
+    // Strip trailing .git for clean browser URLs
+    url = url.replace(/\.git$/, '');
     if (url.indexOf('github.com') !== -1) {
       repoLink = { href: url, text: "View it on GitHub" };
     } else if (url.indexOf('source.datanerd.us') !== -1) {
@@ -74,18 +84,23 @@ const DebugInfoPage = (props) => {
     }
   }
 
-  // Build feature request URL from repo
-  var featureRequestUrl = null;
-  if (currentNerdpack && currentNerdpack.repositoryUrl) {
-    var repo = currentNerdpack.repositoryUrl;
-    if (repo.indexOf('github.com') !== -1 || repo.indexOf('source.datanerd.us') !== -1) {
-      featureRequestUrl = repo.replace(/\/$/, '') + '/issues/new';
-    }
-  }
-
   var decodedGuid = debugEntityGuid ? decodeEntityGuid(debugEntityGuid) : null;
 
   return el("div", { className: "DebugMode-container" },
+
+    // Associated Teams
+    currentNerdpack && currentNerdpack.teams && currentNerdpack.teams.length > 0 && [
+      el("h2", { className: "DebugMode-heading", key: "teams-heading" }, "Associated Teams"),
+      currentNerdpack.teams.map(function (team) {
+        return el(React.Fragment, { key: team.id },
+          el("h3", { className: "DebugMode-subheading" }, team.name),
+          KeyValueTable([
+            team.teamstoreUrl ? TableRow("Team Store", team.name, { href: team.teamstoreUrl, text: team.name }) : null,
+            team.slack ? TableRow("Slack Channel", team.slack, team.slackUrl ? { href: team.slackUrl, text: team.slack } : null) : null
+          ])
+        );
+      })
+    ],
 
     // Platform Info
     el("h2", { className: "DebugMode-heading" }, "Platform Info"),
@@ -125,33 +140,7 @@ const DebugInfoPage = (props) => {
             ? [el("tr", { key: "_notfound" }, el("td", { colSpan: 2, style: { fontStyle: "italic", color: "#999" } }, "No nerdpack metadata found for \"" + nerdpackName + "\""))]
             : []
         ))
-      : el("div", { className: "DebugMode-empty" }, "Waiting for nerdlet info..."),
-
-    // Associated Teams
-    currentNerdpack && currentNerdpack.teams && currentNerdpack.teams.length > 0 && [
-      el("h2", { className: "DebugMode-heading", key: "teams-heading" }, "Associated Teams"),
-      currentNerdpack.teams.map(function (team) {
-        return el(React.Fragment, { key: team.id },
-          el("h3", { className: "DebugMode-subheading" }, team.name),
-          KeyValueTable([
-            team.teamstoreUrl ? TableRow("Team Store", team.name, { href: team.teamstoreUrl, text: team.name }) : null,
-            team.slack ? TableRow("Slack Channel", team.slack, team.slackUrl ? { href: team.slackUrl, text: team.slack } : null) : null
-          ])
-        );
-      })
-    ],
-
-    // Other
-    currentNerdpack && featureRequestUrl && [
-      el("h2", { className: "DebugMode-heading", key: "other-heading" }, "Other"),
-      el("a", {
-        className: "DebugMode-otherLink",
-        href: featureRequestUrl,
-        target: "_blank",
-        rel: "noopener noreferrer",
-        key: "feature-request"
-      }, "Submit a Feature Request")
-    ]
+      : el("div", { className: "DebugMode-empty" }, "Waiting for nerdlet info...")
   );
 };
 

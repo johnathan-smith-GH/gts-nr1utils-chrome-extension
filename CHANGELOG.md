@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.8
+- Fix Debug Mode repo links: convert SSH git URLs (git@host:org/repo.git) to HTTPS for browser navigation
+- Remove "Other" section and "Submit a Feature Request" from Debug Mode
+- Move Associated Teams section to top of Debug Mode page
+
 ## 1.8.7
 - Add Entity GUID decoding to Debug Mode: when an entity GUID is detected, the decoded Account ID, Domain, Type, and Domain ID are displayed below it
 - Add URL path fallback for entity GUID extraction when navigation state does not provide it (e.g., "entity isn't available in this account" error pages)
