@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.10
+- Restructure README as a concise landing page: replace detailed feature descriptions with a summary list pointing to the User Guide and Under The Hood docs
+- Slim down README Usage section to a brief paragraph with pointer to User Guide
+- Eliminates content duplication between README and User Guide — User Guide is now the single authoritative feature reference
+
 ## 1.8.9
 - Security: restrict all `postMessage` calls to same-origin (`window.location.origin`) instead of wildcard (`*`) across early-wrap.js, page-script.js, and content.js
 - Add try-catch around `JSON.parse` calls in `buildGraphqlRequests.js` to prevent UI crashes from malformed payloads

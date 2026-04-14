@@ -4,42 +4,19 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 
 Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 Debug Mode panel, and information scattered across the New Relic UI into a single side panel.
 
-**Version:** 1.8.9
+**Version:** 1.8.10
 
 ## Features
 
-### Request Capture & Monitoring
+- NerdGraph and NRQL request capture with live status monitoring
+- Dashboard widget correlation with Locate on Page highlighting
+- Error, timeout, and multi-account detection
+- Owning team identification and source component tracing
+- Debug Mode with platform info, nerdpack metadata, and entity GUID decoding
+- Full-text search, filtering, and JSON export
 
-- **NerdGraph Request Capture** — Intercepts all GraphQL queries and mutations, extracts query names, variables, and full responses.
-- **NRQL Request Capture** — Captures direct NRQL requests and extracts embedded NRQL queries from GraphQL payloads.
-- **Live Request Monitoring** — Requests appear with a pending indicator when fired and update to success/error/timeout along with response timing. Each request shows a query pill and a timing pill:
-  - ![QUERY](https://img.shields.io/badge/QUERY-eab308?style=flat-square) ![PENDING](https://img.shields.io/badge/PENDING-eab308?style=flat-square) — Request in flight. Timer counts up in real time with a pulsing animation.
-  - ![QUERY](https://img.shields.io/badge/QUERY-2B8C0E?style=flat-square) ![RESPONSE TIME](https://img.shields.io/badge/RESPONSE_TIME-2B8C0E?style=flat-square) — Request completed successfully with no errors.
-  - ![QUERY](https://img.shields.io/badge/QUERY-FF0000?style=flat-square) ![RESPONSE TIME](https://img.shields.io/badge/RESPONSE_TIME-2B8C0E?style=flat-square) — Response received but contained errors. Timing stays green because a response was returned.
-  - ![QUERY](https://img.shields.io/badge/QUERY-FF0000?style=flat-square) ![RESPONSE TIME](https://img.shields.io/badge/RESPONSE_TIME-FF0000?style=flat-square) — Request timed out (error message contains "timeout"). Both pills are red.
-- **Error & Timeout Detection** — Errors are flagged with red status indicators and banners. Timeouts are flagged with red status indicators.
-
-### Dashboard Intelligence
-
-- **Dashboard Widget Correlation** — Matches captured NRQL results to their corresponding dashboard widgets by comparing query text against the dashboard entity definition. Shows a purple "Dashboard Widget" banner with the widget title, page name, and widget ID. Widget names are also searchable in the filter.
-- **Locate on Page** — When a NRQL result matches a dashboard widget, a "Locate on Page" button scrolls to and highlights the widget on the page with a purple overlay. For widgets below the fold, the extension automatically scrolls the dashboard to trigger lazy rendering before highlighting.
-- **Dashboard Widget Placeholders** — Grey "defined" entries appear in the NRQL results for widget queries not yet captured as network requests. These are replaced with live results as widgets load via "Locate on Page" or manual scrolling.
-- **Inaccessible Widget Detection** — Detects dashboard widgets the user can't access and shows an amber banner listing affected widget names and directing to the dashboard owner for account identification.
-
-### Troubleshooting Context
-
-- **Multi-Account Detection** — Warns when NRQL is querying more than one account ID, which can give insight into visualizations that are querying more than one account and help identify a customer user's lack of access to all involved accounts.
-- **Owning Team Identification** — Extracts and displays the owning team when an `owningTeam` field is found in the JSON response, for faster escalation. This banner only appears when the field is present — not all responses include it.
-- **Source Component Tracing** — Captures call stacks at fetch intercept time to identify the React component that initiated a request, shown as a fallback "Source Component" banner when widget map matching is unavailable.
-- **Debug Mode** — Displays platform info (version, region, user ID, account ID), subscribed nerdpack details, and current nerdlet metadata. Updates on SPA navigation.
-- **Entity GUID Decoding** — When the current page has an entity GUID (from navigation state or URL path), Debug Mode automatically decodes the base64 GUID and displays the entity's account ID, domain, type, and domain ID. Useful for identifying which account an inaccessible entity belongs to.
-
-### Search, Filter & Export
-
-- **Search & Filter** — Full-text search across queries, variables, and responses. Filter by errors only or timeouts only.
-- **Keyboard Navigation** — Arrow Up/Down to navigate between requests, Enter to select.
-- **Preserve Log** — Checkbox to persist captured requests across page navigations within the same tab, saved to localStorage.
-- **Export** — Select results and export as clean JSON with full context (query, variables, response, timing, metadata).
+For full feature documentation, see the **[User Guide](docs/guide.html)**.
+For implementation details, see **[Under The Hood](docs/under-the-hood.html)**.
 
 ## Installation
 
@@ -51,11 +28,9 @@ Consolidates troubleshooting workflows that typically require juggling browser d
 
 ## Usage
 
-1. After installing, Click the extension icon to open the side panel.
-2. Refresh any already-open New Relic page (`*.newrelic.com`) for request capturing to begin.
-4. Use the tabs to switch between **NerdGraph**, **NRQL**, and **Debug Mode**.
-5. Click any captured request in the left panel to view its details on the right.
-6. Use the checkboxes to select results, then click **Export** to save as JSON if desired.
+Click the extension icon to open the side panel. Refresh any already-open New Relic pages for capturing to begin. Use the tabs to switch between **NerdGraph**, **NRQL**, and **Debug Mode**.
+
+See the **[User Guide](docs/guide.html)** for detailed usage instructions.
 
 ## Architecture
 
