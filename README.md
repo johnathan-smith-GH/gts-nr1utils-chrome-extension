@@ -4,7 +4,7 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 
 Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 Debug Mode panel, and information scattered across the New Relic UI into a single side panel.
 
-**Version:** 1.8.10
+**Version:** 1.8.11
 
 ## Features
 
@@ -15,8 +15,8 @@ Consolidates troubleshooting workflows that typically require juggling browser d
 - Debug Mode with platform info, nerdpack metadata, and entity GUID decoding
 - Full-text search, filtering, and JSON export
 
-For full feature documentation, see the **[User Guide](docs/guide.html)**.
-For implementation details, see **[Under The Hood](docs/under-the-hood.html)**.
+For full feature documentation, see the **[User Guide](https://johnathan-smith-gh.github.io/gts-nr1utils-chrome-extension/docs/guide.html)**.
+For implementation details, see **[Under The Hood](https://johnathan-smith-gh.github.io/gts-nr1utils-chrome-extension/docs/under-the-hood.html)**.
 
 ## Installation
 
@@ -30,7 +30,7 @@ For implementation details, see **[Under The Hood](docs/under-the-hood.html)**.
 
 Click the extension icon to open the side panel. Refresh any already-open New Relic pages for capturing to begin. Use the tabs to switch between **NerdGraph**, **NRQL**, and **Debug Mode**.
 
-See the **[User Guide](docs/guide.html)** for detailed usage instructions.
+See the **[User Guide](https://johnathan-smith-gh.github.io/gts-nr1utils-chrome-extension/docs/guide.html)** for detailed usage instructions.
 
 ## Architecture
 
@@ -48,7 +48,7 @@ Side Panel UI (React + Redux)
 
 Request interception is two-phase: a `REQUEST_START` message fires immediately when a request is made (creating a pending entry in the UI), and a `REQUEST_COMPLETE` message fires when the response arrives (updating status, timing, and parsed data).
 
-For full implementation details, see the **Under The Hood** guide accessible from within the extension's User Guide.
+For full implementation details, see **[Under The Hood](https://johnathan-smith-gh.github.io/gts-nr1utils-chrome-extension/docs/under-the-hood.html)**.
 
 ## File Structure
 

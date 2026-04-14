@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.11
+- Enable GitHub Pages to serve User Guide and Under The Hood as rendered HTML
+- Update README doc links to point to GitHub Pages URLs instead of raw HTML files
+
 ## 1.8.10
 - Restructure README as a concise landing page: replace detailed feature descriptions with a summary list pointing to the User Guide and Under The Hood docs
 - Slim down README Usage section to a brief paragraph with pointer to User Guide
