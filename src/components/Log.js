@@ -29,7 +29,7 @@ const Log = props => {
     if (req.errors) return 1;
     return 2;
   }
-  const sortedByStartTime = requests.sort(function (a, b) {
+  const sortedByStartTime = [...requests].sort(function (a, b) {
     var pa = statusPriority(a);
     var pb = statusPriority(b);
     if (pa !== pb) return pa - pb;

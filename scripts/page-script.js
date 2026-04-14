@@ -86,7 +86,7 @@
         } catch (e) {
           // Silently ignore errors to avoid breaking the page
         }
-      });
+      }).catch(function () {});
 
       return response;
     });

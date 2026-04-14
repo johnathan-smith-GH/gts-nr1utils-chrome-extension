@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.14
+- Add missing `.catch()` on `Promise.all` chain in page-script.js fetch wrapper
+- Fix `requests.sort()` mutating props array in Log.js — now copies before sorting
+- Guard `parseTextStream.js` against NaN from non-numeric stream IDs
+- Extract shared `matchWidgetByNrql` util — deduplicate widget matching logic from RequestsPage.js and actionCreators.js
+
 ## 1.8.13
 - Add try-catch around `JSON.parse` calls in `buildNrqlRequests.js` to prevent crashes from malformed NRQL payloads
 - Auto-remove XHR event listeners after firing via `{ once: true }` in early-wrap.js and page-script.js to prevent listener accumulation

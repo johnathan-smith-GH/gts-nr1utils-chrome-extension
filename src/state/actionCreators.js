@@ -1,4 +1,5 @@
 /* eslint-disable no-param-reassign */
+import matchWidgetByNrql from '../utils/matchWidgetByNrql.js';
 const setCurrentPage = (state, action) => {
   state.currentPage = action.payload;
   state.currentQueryIdx = undefined;
@@ -54,7 +55,7 @@ const updateNrqlRequests = (state, action) => {
   if (wm && wm.length) {
     newReqs.forEach(function (req) {
       if (!req._matchedWidget && req.query) {
-        var matched = matchNrqlToWidget(req.query, wm);
+        var matched = matchWidgetByNrql(req.query, wm);
         if (matched) {
           req._matchedWidget = { title: matched.title, widgetId: matched.widgetId, pageName: matched.pageName };
         }
@@ -166,7 +167,7 @@ const addPendingNrqlRequest = (state, action) => {
   if (wm && wm.length) {
     newReqs.forEach(function (req) {
       if (!req._matchedWidget && req.query) {
-        var matched = matchNrqlToWidget(req.query, wm);
+        var matched = matchWidgetByNrql(req.query, wm);
         if (matched) {
           req._matchedWidget = { title: matched.title, widgetId: matched.widgetId, pageName: matched.pageName };
         }
@@ -193,7 +194,7 @@ const completeRequest = (state, action) => {
         var merged = Object.assign({}, state.nrqlRequests[j], updates);
         // Ensure widget matching on completion
         if (!merged._matchedWidget && merged.query && state.widgetMap && state.widgetMap.length) {
-          var wMatch = matchNrqlToWidget(merged.query, state.widgetMap);
+          var wMatch = matchWidgetByNrql(merged.query, state.widgetMap);
           if (wMatch) {
             merged._matchedWidget = { title: wMatch.title, widgetId: wMatch.widgetId, pageName: wMatch.pageName };
           }
@@ -206,32 +207,6 @@ const completeRequest = (state, action) => {
   return state;
 };
 
-function normalizeNrql(s) {
-  return (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
-}
-
-function matchNrqlToWidget(query, widgetMap) {
-  if (!query || !widgetMap || !widgetMap.length) return null;
-  var qn = normalizeNrql(query);
-  // Pass 1: exact
-  for (var i = 0; i < widgetMap.length; i++) {
-    var w = widgetMap[i];
-    if (!w.nrqlQueries) continue;
-    for (var j = 0; j < w.nrqlQueries.length; j++) {
-      if (qn === normalizeNrql(w.nrqlQueries[j])) return w;
-    }
-  }
-  // Pass 2: substring
-  for (var i2 = 0; i2 < widgetMap.length; i2++) {
-    var w2 = widgetMap[i2];
-    if (!w2.nrqlQueries) continue;
-    for (var j2 = 0; j2 < w2.nrqlQueries.length; j2++) {
-      var wn = normalizeNrql(w2.nrqlQueries[j2]);
-      if (qn.indexOf(wn) !== -1 || wn.indexOf(qn) !== -1) return w2;
-    }
-  }
-  return null;
-}
 
 const setWidgetMap = (state, action) => {
   // Merge new widgets with existing, deduplicating by widgetId
@@ -245,7 +220,7 @@ const setWidgetMap = (state, action) => {
   var fullMap = state.widgetMap;
   state.nrqlRequests.forEach(function (req) {
     if (!req._matchedWidget && req.query) {
-      var matched = matchNrqlToWidget(req.query, fullMap);
+      var matched = matchWidgetByNrql(req.query, fullMap);
       if (matched) {
         req._matchedWidget = {
           title: matched.title,

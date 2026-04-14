@@ -4,6 +4,7 @@ import { LogRequestType } from '../types.js';
 import Log from './Log.js';
 import ResponseDataSection from './ResponseDataSection.js';
 import findAccountIds from '../utils/findAccountIds.js';
+import matchWidgetByNrql from '../utils/matchWidgetByNrql.js';
 
 /**
  * Walk all text nodes inside a container and return Range objects
@@ -43,38 +44,6 @@ function findOwningTeam(obj) {
     var r = findOwningTeam(obj[key]);
     if (r) return r;
   }
-  return null;
-}
-
-/**
- * Match a NRQL request to a dashboard widget by comparing query text.
- * Uses exact match first, then falls back to substring containment.
- * Returns the matched widget object or null.
- */
-function matchWidgetByNrql(request, widgetMap) {
-  if (!widgetMap || !widgetMap.length || !request || !request.query) return null;
-  var queryNormalized = request.query.replace(/\s+/g, ' ').trim().toLowerCase();
-
-  // Pass 1: exact match
-  for (var i = 0; i < widgetMap.length; i++) {
-    var widget = widgetMap[i];
-    if (!widget.nrqlQueries) continue;
-    for (var j = 0; j < widget.nrqlQueries.length; j++) {
-      var widgetNrql = widget.nrqlQueries[j].replace(/\s+/g, ' ').trim().toLowerCase();
-      if (queryNormalized === widgetNrql) return widget;
-    }
-  }
-
-  // Pass 2: one contains the other (handles NR1 runtime alias modifications)
-  for (var i2 = 0; i2 < widgetMap.length; i2++) {
-    var widget2 = widgetMap[i2];
-    if (!widget2.nrqlQueries) continue;
-    for (var j2 = 0; j2 < widget2.nrqlQueries.length; j2++) {
-      var widgetNrql2 = widget2.nrqlQueries[j2].replace(/\s+/g, ' ').trim().toLowerCase();
-      if (queryNormalized.indexOf(widgetNrql2) !== -1 || widgetNrql2.indexOf(queryNormalized) !== -1) return widget2;
-    }
-  }
-
   return null;
 }
 
@@ -150,7 +119,7 @@ const RequestsPage = props => {
     var filterLower = logFilter.toLowerCase();
     if (JSON.stringify(request).toLowerCase().includes(filterLower)) return true;
     // Also search matched widget title/page
-    var matched = request._matchedWidget || matchWidgetByNrql(request, widgetMap);
+    var matched = request._matchedWidget || matchWidgetByNrql(request.query, widgetMap);
     if (matched) {
       var widgetStr = (matched.title + ' ' + matched.pageName + ' ' + matched.widgetId).toLowerCase();
       if (widgetStr.includes(filterLower)) return true;
@@ -341,7 +310,7 @@ const RequestsPage = props => {
   }, "\u2715")), /*#__PURE__*/React.createElement("div", {
     className: "App-copyResultBar"
   }, (function () {
-    var matched = currentQuery._matchedWidget || matchWidgetByNrql(currentQuery, widgetMap);
+    var matched = currentQuery._matchedWidget || matchWidgetByNrql(currentQuery.query, widgetMap);
     if (!matched) return null;
     return /*#__PURE__*/React.createElement("a", {
       className: "App-locateBtn",
@@ -368,7 +337,7 @@ const RequestsPage = props => {
     className: "App-owningTeamValue"
   }, findOwningTeam(currentQuery))),
   (function () {
-    var matched = currentQuery._matchedWidget || matchWidgetByNrql(currentQuery, widgetMap);
+    var matched = currentQuery._matchedWidget || matchWidgetByNrql(currentQuery.query, widgetMap);
     if (matched) {
       return /*#__PURE__*/React.createElement("div", {
         className: "App-widgetHintsBanner"

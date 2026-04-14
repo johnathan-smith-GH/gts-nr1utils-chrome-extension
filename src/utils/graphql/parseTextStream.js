@@ -13,7 +13,8 @@ const parseTextStream = textStream => {
       }
     }
 
-    return +pieces[2];
+    var parsed = +pieces[2];
+    return isNaN(parsed) ? latestId : parsed;
   }, 0);
   return datasets;
 };

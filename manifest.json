@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "GTS NR1 Utils",
   "description": "GTS utilities for NR1",
-  "version": "1.8.13",
+  "version": "1.8.14",
   "permissions": [
     "webNavigation",
     "tabs",
