@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.9
+- Security: restrict all `postMessage` calls to same-origin (`window.location.origin`) instead of wildcard (`*`) across early-wrap.js, page-script.js, and content.js
+- Add try-catch around `JSON.parse` calls in `buildGraphqlRequests.js` to prevent UI crashes from malformed payloads
+- Add null checks for `chrome.tabs.query` results in background.js to prevent runtime errors when no active tab is found
+- Add `.catch()` handlers to unguarded Promise chains in early-wrap.js to prevent unhandled rejections
+- Add XHR `error` and `abort` event handlers in early-wrap.js and page-script.js so failed/aborted requests are tracked instead of silently lost
+
 ## 1.8.8
 - Fix Debug Mode repo links: convert SSH git URLs (git@host:org/repo.git) to HTTPS for browser navigation
 - Remove "Other" section and "Submit a Feature Request" from Debug Mode

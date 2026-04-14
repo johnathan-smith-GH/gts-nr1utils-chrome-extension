@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "GTS NR1 Utils",
   "description": "GTS utilities for NR1",
-  "version": "1.8.8",
+  "version": "1.8.9",
   "permissions": [
     "webNavigation",
     "tabs",
@@ -14,7 +14,7 @@
     "https://*.newrelic.com/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "scripts/background.js"
   },
   "side_panel": {
     "default_path": "sidepanel.html"
@@ -32,7 +32,7 @@
       "matches": [
         "https://*.newrelic.com/*"
       ],
-      "js": ["early-wrap.js"],
+      "js": ["scripts/early-wrap.js"],
       "run_at": "document_start",
       "world": "MAIN"
     },
@@ -40,13 +40,13 @@
       "matches": [
         "https://*.newrelic.com/*"
       ],
-      "js": ["content.js"],
+      "js": ["scripts/content.js"],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["page-script.js"],
+      "resources": ["scripts/page-script.js"],
       "matches": ["https://*.newrelic.com/*"]
     }
   ],

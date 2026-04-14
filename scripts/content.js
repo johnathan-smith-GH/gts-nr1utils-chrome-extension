@@ -24,7 +24,7 @@
   // ============================================================
   var scriptUrl;
   try {
-    scriptUrl = chrome.runtime.getURL('page-script.js');
+    scriptUrl = chrome.runtime.getURL('scripts/page-script.js');
   } catch (e) {
     // Extension context invalidated at load time — bail out entirely.
     return;
@@ -394,7 +394,7 @@
     chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
       if (message.action === 'GET_LOCATION') {
         // Request location from the page script
-        window.postMessage({ type: 'NR1_UTILS_GET_LOCATION' }, '*');
+        window.postMessage({ type: 'NR1_UTILS_GET_LOCATION' }, window.location.origin);
         // The page script will respond via NR1_UTILS_LOCATION_RESPONSE
         // which gets forwarded above
       }
@@ -406,7 +406,7 @@
 
       if (message.action === 'GET_DEBUG_INFO') {
         // Forward to the page script to re-send cached debug info
-        window.postMessage({ type: 'NR1_UTILS_GET_DEBUG_INFO' }, '*');
+        window.postMessage({ type: 'NR1_UTILS_GET_DEBUG_INFO' }, window.location.origin);
       }
 
       if (message.action === 'HIGHLIGHT_WIDGET') {

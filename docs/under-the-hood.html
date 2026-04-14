@@ -114,12 +114,13 @@
   <div class="tech-section">
     <p>The extension uses Chrome's Manifest V3 architecture with four main components:</p>
     <ul>
-      <li><strong><code>early-wrap.js</code></strong> — Injected into the page's main world via manifest (<code>world: "MAIN"</code>, <code>run_at: "document_start"</code>). Wraps <code>window.fetch</code> and <code>XMLHttpRequest.prototype.open/send</code> before any page JavaScript executes. Sends two-phase messages via <code>window.postMessage</code>.</li>
+      <li><strong><code>early-wrap.js</code></strong> — Injected into the page's main world via manifest (<code>world: "MAIN"</code>, <code>run_at: "document_start"</code>). Wraps <code>window.fetch</code> and <code>XMLHttpRequest.prototype.open/send</code> before any page JavaScript executes. Sends two-phase messages via <code>window.postMessage</code> restricted to <code>window.location.origin</code>. XHR wrappers listen for <code>load</code>, <code>error</code>, and <code>abort</code> events to track all request outcomes.</li>
       <li><strong><code>page-script.js</code></strong> — Loaded asynchronously into the main world via a <code>&lt;script src&gt;</code> tag injected by <code>content.js</code>. Handles debug info collection (platform info, nerdpack metadata, nerdlet navigation). Skips fetch/XHR wrapping if <code>early-wrap.js</code> already did it (checks <code>window.__NR1_UTILS_EARLY_WRAP__</code>).</li>
       <li><strong><code>content.js</code></strong> — Runs in the isolated world at <code>document_start</code>. Bridges between the main world (page scripts) and the service worker via <code>window.addEventListener('message')</code> and <code>chrome.runtime.sendMessage</code>. Detects SPA navigation by wrapping <code>history.pushState/replaceState</code>. Also executes the "Locate on Page" widget highlight logic directly in the DOM (8 search strategies + scroll-to-lazy-load).</li>
       <li><strong><code>background.js</code></strong> — Service worker. Routes messages between content scripts and the side panel via a Chrome runtime port (<code>nr1-utils-panel</code>). Buffers requests, caches debug info, and manages nerdpack metadata fetching via <code>chrome.scripting.executeScript</code>.</li>
     </ul>
-    <p><strong>Message flow:</strong> <code>early-wrap.js</code> (main world) → <code>window.postMessage</code> → <code>content.js</code> (isolated world) → <code>chrome.runtime.sendMessage</code> → <code>background.js</code> (service worker) → <code>port.postMessage</code> → side panel (<code>App.js</code>)</p>
+    <p><strong>Message flow:</strong> <code>early-wrap.js</code> (main world) → <code>window.postMessage</code> (origin-restricted) → <code>content.js</code> (isolated world) → <code>chrome.runtime.sendMessage</code> → <code>background.js</code> (service worker) → <code>port.postMessage</code> → side panel (<code>App.js</code>)</p>
+    <p><strong>Security:</strong> All <code>window.postMessage</code> calls use <code>window.location.origin</code> as the target origin (not <code>'*'</code>) to prevent cross-origin message interception. All <code>chrome.tabs.query</code> results are null-checked before tab access. Promise chains include <code>.catch()</code> handlers to prevent unhandled rejections.</p>
   </div>
 
   <h2>Request Capture &amp; Display</h2>
@@ -142,6 +143,7 @@
       <li>Sent when the response arrives (fetch <code>.then()</code>) or fails (fetch <code>.catch()</code>)</li>
       <li>Contains: <code>requestId</code>, <code>url</code>, <code>requestBody</code>, <code>responseBody</code>, <code>timing</code> (startTime, totalTime, blockedTime)</li>
       <li>Response body is read via <code>response.clone().text()</code> with a 5-second timeout race — if the body can't be read (cross-origin, very large), falls back to empty string</li>
+      <li>XHR interception listens for <code>load</code>, <code>error</code>, and <code>abort</code> events so failed or cancelled requests are still tracked (with empty response body)</li>
       <li><code>App.js processRequestComplete()</code> calls <code>buildGraphqlRequests</code> or <code>buildNrqlRequests</code> to parse the response, then the Redux <code>completeRequest</code> reducer finds the pending entry by <code>requestId</code> and merges in the response data</li>
       <li>Status is set to <code>'success'</code>, <code>'error'</code>, or <code>'timeout'</code> (timeout detected by searching error messages for the word "timeout")</li>
     </ul>
@@ -160,7 +162,7 @@
     <p>Handled by <code>buildGraphqlRequests.js</code></p>
     <ul>
       <li>URL matching: <code>url.pathname.match('graphql')</code></li>
-      <li>Request body is parsed as JSON. Supports both single objects and arrays (NR1 has used both formats).</li>
+      <li>Request body is parsed as JSON (wrapped in try-catch — malformed payloads produce a "Malformed Request" entry instead of crashing). Supports both single objects and arrays (NR1 has used both formats).</li>
       <li>Response may be JSON or a text stream (detected by <code>data.match(/^id:.*/)</code>). Text streams are parsed by <code>parseTextStream.js</code>.</li>
       <li>Query name is extracted via regex: <code>/(query|mutation|subscription)\s+([\w]+)/</code>. Fallback: first 24 characters of the query.</li>
       <li>The full response object is stored as <code>response</code> (not just <code>.data</code>), preserving all fields including <code>extensions</code>, <code>errors</code>, etc.</li>
@@ -434,24 +436,24 @@
   <div class="tech-section">
     <table>
       <tr><th>File</th><th>Purpose</th></tr>
-      <tr><td><code>early-wrap.js</code></td><td>Synchronous fetch/XHR wrapping (main world, document_start), call stack capture</td></tr>
-      <tr><td><code>page-script.js</code></td><td>Debug info collection, fallback fetch/XHR wrapping, legacy widget highlight handler</td></tr>
-      <tr><td><code>content.js</code></td><td>Message bridge (main world ↔ service worker), SPA navigation detection, widget highlight execution (DOM search, scroll-to-lazy-load, overlay)</td></tr>
-      <tr><td><code>background.js</code></td><td>Service worker, message routing, request buffering, debug info caching, widget highlight routing with fallback tab discovery</td></tr>
-      <tr><td><code>dist/App.js</code></td><td>Main React app, Redux wiring, request processing, dashboard widget map extraction</td></tr>
-      <tr><td><code>dist/state/actionCreators.js</code></td><td>Redux reducers (request state, selection, filters)</td></tr>
-      <tr><td><code>dist/state/rootSlice.js</code></td><td>Redux slice definition and initial state</td></tr>
-      <tr><td><code>dist/components/Navigation.js</code></td><td>Tab nav, Clear Log, Export, filters, User Guide button</td></tr>
-      <tr><td><code>dist/components/RequestsPage.js</code></td><td>Left/right panel layout, search within result, banners (owning team, widget, error, inaccessible), Locate on Page button</td></tr>
-      <tr><td><code>dist/components/Log.js</code></td><td>Result list with sorting, select all, search filter</td></tr>
-      <tr><td><code>dist/components/LogEntry.js</code></td><td>Individual result row with live timer, status colors</td></tr>
-      <tr><td><code>dist/components/ResponseDataSection.js</code></td><td>JSON rendering (react-json-view, clipboard disabled)</td></tr>
-      <tr><td><code>dist/components/DebugInfoPage.js</code></td><td>Debug Mode tab UI</td></tr>
-      <tr><td><code>dist/utils/graphql/buildGraphqlRequests.js</code></td><td>Parse GraphQL request/response into structured objects</td></tr>
-      <tr><td><code>dist/utils/nrql/buildNrqlRequests.js</code></td><td>Parse NRQL request/response</td></tr>
-      <tr><td><code>dist/utils/nrql/extractNrqlFromGraphql.js</code></td><td>Extract embedded NRQL from GraphQL requests, widget hint extraction</td></tr>
-      <tr><td><code>dist/App.css</code></td><td>All styles (must regenerate <code>App.css.proxy.js</code> after changes)</td></tr>
-      <tr><td><code>dist/App.css.proxy.js</code></td><td>Snowpack CSS proxy — inlines CSS as JS string. <strong>Must be regenerated</strong> after any CSS edit.</td></tr>
+      <tr><td><code>scripts/early-wrap.js</code></td><td>Synchronous fetch/XHR wrapping (main world, document_start), call stack capture</td></tr>
+      <tr><td><code>scripts/page-script.js</code></td><td>Debug info collection, fallback fetch/XHR wrapping, legacy widget highlight handler</td></tr>
+      <tr><td><code>scripts/content.js</code></td><td>Message bridge (main world ↔ service worker), SPA navigation detection, widget highlight execution (DOM search, scroll-to-lazy-load, overlay)</td></tr>
+      <tr><td><code>scripts/background.js</code></td><td>Service worker, message routing, request buffering, debug info caching, widget highlight routing with fallback tab discovery</td></tr>
+      <tr><td><code>src/App.js</code></td><td>Main React app, Redux wiring, request processing, dashboard widget map extraction</td></tr>
+      <tr><td><code>src/state/actionCreators.js</code></td><td>Redux reducers (request state, selection, filters)</td></tr>
+      <tr><td><code>src/state/rootSlice.js</code></td><td>Redux slice definition and initial state</td></tr>
+      <tr><td><code>src/components/Navigation.js</code></td><td>Tab nav, Clear Log, Export, filters, User Guide button</td></tr>
+      <tr><td><code>src/components/RequestsPage.js</code></td><td>Left/right panel layout, search within result, banners (owning team, widget, error, inaccessible), Locate on Page button</td></tr>
+      <tr><td><code>src/components/Log.js</code></td><td>Result list with sorting, select all, search filter</td></tr>
+      <tr><td><code>src/components/LogEntry.js</code></td><td>Individual result row with live timer, status colors</td></tr>
+      <tr><td><code>src/components/ResponseDataSection.js</code></td><td>JSON rendering (react-json-view, clipboard disabled)</td></tr>
+      <tr><td><code>src/components/DebugInfoPage.js</code></td><td>Debug Mode tab UI</td></tr>
+      <tr><td><code>src/utils/graphql/buildGraphqlRequests.js</code></td><td>Parse GraphQL request/response into structured objects</td></tr>
+      <tr><td><code>src/utils/nrql/buildNrqlRequests.js</code></td><td>Parse NRQL request/response</td></tr>
+      <tr><td><code>src/utils/nrql/extractNrqlFromGraphql.js</code></td><td>Extract embedded NRQL from GraphQL requests, widget hint extraction</td></tr>
+      <tr><td><code>src/App.css</code></td><td>All styles (must regenerate <code>App.css.proxy.js</code> after changes)</td></tr>
+      <tr><td><code>src/App.css.proxy.js</code></td><td>Snowpack CSS proxy — inlines CSS as JS string. <strong>Must be regenerated</strong> after any CSS edit.</td></tr>
     </table>
   </div>
 

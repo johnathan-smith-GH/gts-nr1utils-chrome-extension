@@ -50,7 +50,7 @@ chrome.runtime.onConnect.addListener(function (port) {
     if (message.action === 'GET_LOCATION') {
       // Forward to the content script of the active tab
       chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-        if (tabs[0]) {
+        if (tabs && tabs.length > 0) {
           chrome.tabs.sendMessage(tabs[0].id, { action: 'GET_LOCATION' }).catch(function () {});
         }
       });
@@ -59,7 +59,7 @@ chrome.runtime.onConnect.addListener(function (port) {
 
     if (message.action === 'UPDATE_URL') {
       chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-        if (tabs[0]) {
+        if (tabs && tabs.length > 0) {
           chrome.tabs.update(tabs[0].id, { url: message.url });
         }
       });
@@ -69,7 +69,7 @@ chrome.runtime.onConnect.addListener(function (port) {
     if (message.action === 'HIGHLIGHT_WIDGET') {
       console.log('[NR1 Utils bg] HIGHLIGHT_WIDGET received:', message.widgetTitle);
       chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-        if (tabs[0]) {
+        if (tabs && tabs.length > 0) {
           console.log('[NR1 Utils bg] Sending to tab:', tabs[0].id, tabs[0].url);
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'HIGHLIGHT_WIDGET',
@@ -112,7 +112,7 @@ chrome.runtime.onConnect.addListener(function (port) {
 
       // Ask the page script for fresh data
       chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-        if (tabs[0]) {
+        if (tabs && tabs.length > 0) {
           chrome.tabs.sendMessage(tabs[0].id, { action: 'GET_DEBUG_INFO' }).catch(function () {});
           if (!debugInfoCache.nerdpacks) {
             fetchNerdpackMetadataViaTab(tabs[0].id);
@@ -164,20 +164,23 @@ function fetchNerdpackMetadataViaTab(tabId) {
   chrome.scripting.executeScript({
     target: { tabId: tabId },
     world: 'MAIN',
-    func: function () {
+    func: async function () {
       try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', window.location.origin + '/graphql', false);
-        xhr.setRequestHeader('Content-Type', 'application/json; charset=utf-8');
-        xhr.setRequestHeader('newrelic-requesting-services', 'platform|nr1-ui');
-        xhr.setRequestHeader('x-requested-with', 'XMLHttpRequest');
-        xhr.withCredentials = true;
-        xhr.send(JSON.stringify({
-          query: 'query { actor { nerdpacks { effectiveSubscribedVersions(overrides: []) { nerdpackId cliVersion description displayName repositoryUrl sdkVersion subscriptionModel version teams { id name slack slackUrl teamstoreUrl } } } } }'
-        }));
+        var response = await fetch(window.location.origin + '/graphql', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'newrelic-requesting-services': 'platform|nr1-ui',
+            'x-requested-with': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({
+            query: 'query { actor { nerdpacks { effectiveSubscribedVersions(overrides: []) { nerdpackId cliVersion description displayName repositoryUrl sdkVersion subscriptionModel version teams { id name slack slackUrl teamstoreUrl } } } } }'
+          })
+        });
 
-        if (xhr.status === 200) {
-          var json = JSON.parse(xhr.responseText);
+        if (response.ok) {
+          var json = await response.json();
           if (json && json.data && json.data.actor && json.data.actor.nerdpacks) {
             return json.data.actor.nerdpacks.effectiveSubscribedVersions || [];
           }

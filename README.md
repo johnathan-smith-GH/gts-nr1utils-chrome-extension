@@ -4,7 +4,7 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 
 Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 Debug Mode panel, and information scattered across the New Relic UI into a single side panel.
 
-**Version:** 1.8.8
+**Version:** 1.8.9
 
 ## Features
 
@@ -79,19 +79,21 @@ For full implementation details, see the **Under The Hood** guide accessible fro
 
 ```
 ├── manifest.json                # Manifest V3 configuration
-├── background.js                # Service worker (message routing, request buffering, fallback tab routing)
-├── content.js                   # Content script (message bridge, SPA detection, widget highlight + scroll-to-lazy-load)
-├── page-script.js               # Page script (debug/platform info collection, legacy widget highlight)
-├── early-wrap.js                # Early fetch/XHR interception (document_start), call stack capture
-├── index.html / sidepanel.html  # Entry points
-├── guide.html                   # User guide
-├── under-the-hood.html          # Technical architecture documentation (full details on all internals)
-├── icons/                       # Extension icons (16, 48, 128px)
-├── dist/                        # Built application
+├── sidepanel.html / index.html  # UI entry points
+├── scripts/                     # Extension pipeline scripts
+│   ├── background.js            # Service worker (message routing, request buffering, fallback tab routing)
+│   ├── content.js               # Content script (message bridge, SPA detection, widget highlight)
+│   ├── page-script.js           # Page script (debug/platform info collection)
+│   └── early-wrap.js            # Early fetch/XHR interception (document_start), call stack capture
+├── src/                         # React UI source
 │   ├── App.js                   # Main React component, request processing, widget map extraction
 │   ├── components/              # UI components (Navigation, Log, LogEntry, RequestsPage, DebugInfoPage)
 │   ├── state/                   # Redux store, slice, and action creators
 │   └── utils/                   # GraphQL/NRQL parsing, widget hint extraction, helper utilities
+├── docs/                        # Documentation
+│   ├── guide.html               # User guide
+│   └── under-the-hood.html      # Technical architecture documentation
+├── icons/                       # Extension icons (16, 48, 128px)
 └── snowpack/                    # Snowpack-bundled dependencies
 ```
 

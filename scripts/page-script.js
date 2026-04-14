@@ -25,7 +25,7 @@
       requestBody: data.requestBody,
       responseBody: data.responseBody,
       timing: data.timing
-    }, '*');
+    }, window.location.origin);
   }
 
   // ============================================================
@@ -113,10 +113,8 @@
       var startTime = performance.now();
       var bodyPromise = readBodyAsText(body);
 
-      xhr.addEventListener('load', function () {
+      function handleXhrDone(responseBody) {
         var totalTime = performance.now() - startTime;
-        var responseBody;
-        try { responseBody = xhr.responseText || ''; } catch (e) { responseBody = ''; }
         bodyPromise.then(function (requestBody) {
           try {
             sendToContentScript({
@@ -133,6 +131,20 @@
             // Silently ignore
           }
         }).catch(function () {});
+      }
+
+      xhr.addEventListener('load', function () {
+        var responseBody;
+        try { responseBody = xhr.responseText || ''; } catch (e) { responseBody = ''; }
+        handleXhrDone(responseBody);
+      });
+
+      xhr.addEventListener('error', function () {
+        handleXhrDone('');
+      });
+
+      xhr.addEventListener('abort', function () {
+        handleXhrDone('');
       });
     }
 
@@ -436,7 +448,7 @@
         host: window.location.host,
         pathname: window.location.pathname,
         search: window.location.search
-      }, '*');
+      }, window.location.origin);
     }
 
     if (event.data && event.data.type === 'NR1_UTILS_HIGHLIGHT_WIDGET') {
@@ -449,7 +461,7 @@
         window.postMessage({
           type: 'NR1_UTILS_PLATFORM_INFO',
           data: debugInfoCache.platformInfo
-        }, '*');
+        }, window.location.origin);
       } else {
         // Platform info not cached yet — try reading it now
         readPlatformInfo();
@@ -458,7 +470,7 @@
         window.postMessage({
           type: 'NR1_UTILS_NERDPACK_METADATA',
           data: debugInfoCache.nerdpacks
-        }, '*');
+        }, window.location.origin);
       } else {
         // Nerdpack data not cached yet — trigger a fresh fetch
         fetchNerdpackMetadata();
@@ -467,7 +479,7 @@
         window.postMessage({
           type: 'NR1_UTILS_NERDLET_CHANGED',
           data: debugInfoCache.currentNerdlet
-        }, '*');
+        }, window.location.origin);
       }
     }
   });
@@ -569,7 +581,7 @@
       window.postMessage({
         type: 'NR1_UTILS_PLATFORM_INFO',
         data: info
-      }, '*');
+      }, window.location.origin);
     } catch (e) {
       // Silently ignore
     }
@@ -616,7 +628,7 @@
               window.postMessage({
                 type: 'NR1_UTILS_NERDLET_CHANGED',
                 data: data
-              }, '*');
+              }, window.location.origin);
             }
           });
 
@@ -631,7 +643,7 @@
             window.postMessage({
               type: 'NR1_UTILS_NERDLET_CHANGED',
               data: data
-            }, '*');
+            }, window.location.origin);
           }
         } catch (e) {
           // Silently ignore subscription errors
@@ -684,7 +696,7 @@
           window.postMessage({
             type: 'NR1_UTILS_NERDPACK_METADATA',
             data: versions
-          }, '*');
+          }, window.location.origin);
         } else {
           console.warn('[NR1 Utils] Unexpected NerdGraph response:', json);
         }

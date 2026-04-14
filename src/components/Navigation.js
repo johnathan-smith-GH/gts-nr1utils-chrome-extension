@@ -91,7 +91,7 @@ const Navigation = props => {
   }, "Debug Mode"), /*#__PURE__*/React.createElement("a", {
     role: "button",
     className: "App-guideBtn",
-    onClick: function () { window.open(chrome.runtime.getURL('guide.html'), '_blank'); },
+    onClick: function () { window.open(chrome.runtime.getURL('docs/guide.html'), '_blank'); },
     title: "User's Guide"
   }, "User Guide")), isRequestPage && /*#__PURE__*/React.createElement("section", {
     className: "App-navSecondary"

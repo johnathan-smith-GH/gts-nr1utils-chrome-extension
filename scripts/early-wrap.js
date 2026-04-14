@@ -25,7 +25,7 @@
       var stack = new Error().stack || '';
       var lines = stack.split('\n');
       var componentPatterns = /Widget|Chart|Billboard|Table|Line|Bar|Pie|Nrql|Dashboard|Visualization|Area|Funnel|Heatmap|Histogram|Markdown|Scatter|Stacked/i;
-      var skipPatterns = /early-wrap\.js|page-script\.js|content\.js/;
+      var skipPatterns = /scripts\/early-wrap\.js|scripts\/page-script\.js|scripts\/content\.js/;
       var componentHint = null;
       var meaningful = [];
 
@@ -59,7 +59,7 @@
       startTime: data.startTime,
       componentHint: data.componentHint || null,
       stackSummary: data.stackSummary || null
-    }, '*');
+    }, window.location.origin);
   }
 
   function sendRequestComplete(data) {
@@ -70,7 +70,7 @@
       requestBody: data.requestBody,
       responseBody: data.responseBody,
       timing: data.timing
-    }, '*');
+    }, window.location.origin);
   }
 
   function readBodyAsText(body) {
@@ -112,7 +112,7 @@
         componentHint: stackInfo ? stackInfo.componentHint : null,
         stackSummary: stackInfo ? stackInfo.stackSummary : null
       });
-    });
+    }).catch(function () {});
 
     var fetchPromise = originalFetch.apply(this, arguments);
 
@@ -134,7 +134,7 @@
             timing: { startTime: absStartTime, totalTime: totalTime, blockedTime: 0 }
           });
         } catch (e) {}
-      });
+      }).catch(function () {});
     }).catch(function () {
       var totalTime = performance.now() - startTime;
       requestBodyPromise.then(function (reqBody) {
@@ -147,7 +147,7 @@
             timing: { startTime: absStartTime, totalTime: totalTime, blockedTime: 0 }
           });
         } catch (e) {}
-      });
+      }).catch(function () {});
     });
 
     return fetchPromise;
@@ -185,13 +185,11 @@
           componentHint: xhrStackInfo ? xhrStackInfo.componentHint : null,
           stackSummary: xhrStackInfo ? xhrStackInfo.stackSummary : null
         });
-      });
+      }).catch(function () {});
 
-      // Phase 2: Send completion on load
-      xhr.addEventListener('load', function () {
+      // Phase 2: Send completion on load, error, or abort
+      function handleXhrDone(responseBody) {
         var totalTime = performance.now() - startTime;
-        var responseBody;
-        try { responseBody = xhr.responseText || ''; } catch (e) { responseBody = ''; }
         bodyPromise.then(function (requestBody) {
           try {
             sendRequestComplete({
@@ -203,6 +201,20 @@
             });
           } catch (e) {}
         }).catch(function () {});
+      }
+
+      xhr.addEventListener('load', function () {
+        var responseBody;
+        try { responseBody = xhr.responseText || ''; } catch (e) { responseBody = ''; }
+        handleXhrDone(responseBody);
+      });
+
+      xhr.addEventListener('error', function () {
+        handleXhrDone('');
+      });
+
+      xhr.addEventListener('abort', function () {
+        handleXhrDone('');
       });
     }
     return originalSend.apply(this, arguments);

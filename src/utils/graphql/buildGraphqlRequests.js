@@ -18,7 +18,22 @@ const buildGraphqlRequests = (requestPayloadText, data, timing) => {
     }];
   }
 
-  const requestPayload = JSON.parse(requestPayloadText);
+  var requestPayload;
+  try {
+    requestPayload = JSON.parse(requestPayloadText);
+  } catch (e) {
+    return [{
+      id: undefined,
+      query: '',
+      variables: null,
+      response: null,
+      errors: null,
+      status: 'error',
+      type: 'QUERY',
+      name: 'Malformed Request',
+      timing
+    }];
+  }
   const requestPayloads = Array.isArray(requestPayload) ? requestPayload : [requestPayload];
 
   if (!data) {
@@ -40,7 +55,25 @@ const buildGraphqlRequests = (requestPayloadText, data, timing) => {
   }
 
   const isTextStream = data.match(/^id:.*/);
-  const datasets = isTextStream ? parseTextStream(data) : JSON.parse(data);
+  var datasets;
+  try {
+    datasets = isTextStream ? parseTextStream(data) : JSON.parse(data);
+  } catch (e) {
+    return requestPayloads.map((payloadRequest) => {
+      const parsedQuery = parseGraphqlListing(payloadRequest.query);
+      return {
+        id: payloadRequest.id,
+        query: formatGraphql(payloadRequest.query),
+        variables: payloadRequest.variables,
+        response: null,
+        errors: [{ message: 'Failed to parse response body' }],
+        status: 'error',
+        type: parsedQuery.type,
+        name: parsedQuery.name,
+        timing
+      };
+    });
+  }
 
   return requestPayloads.map((payloadRequest, idx) => {
     const parsedQuery = parseGraphqlListing(payloadRequest.query);
