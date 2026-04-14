@@ -717,13 +717,18 @@
   // ============================================================
   var lastHref = window.location.href;
 
-  setInterval(function () {
+  var navigationPollId = setInterval(function () {
     if (window.location.href !== lastHref) {
       lastHref = window.location.href;
       // Re-read platform info on SPA navigation (accountId, nerdlet may change)
       readPlatformInfo();
     }
   }, 1000);
+
+  // Clean up polling when the page unloads
+  window.addEventListener('pagehide', function () {
+    clearInterval(navigationPollId);
+  });
 
   // ============================================================
   // Debug Info: Initialize after a delay to let NR1 load

@@ -68,13 +68,13 @@ function extractWidgetMapFromDashboard(graphqlRequests) {
   var widgets = [];
   for (var i = 0; i < graphqlRequests.length; i++) {
     var req = graphqlRequests[i];
-    if (!req.name || req.name.indexOf('DashboardEntity') === -1 && req.name.indexOf('GetDashboard') === -1) continue;
+    if (!req.name || (req.name.indexOf('DashboardEntity') === -1 && req.name.indexOf('GetDashboard') === -1)) continue;
     var resp = req.response;
     if (!resp || !resp.data) continue;
     var entity = resp.data.actor && resp.data.actor.entity;
     if (!entity || !entity.pages) continue;
     var dashboardAccountId = entity.accountId || null;
-    var dashboardOwnerEmail = entity.owner && entity.owner.email || null;
+    var dashboardOwnerEmail = (entity.owner && entity.owner.email) || null;
     for (var pi = 0; pi < entity.pages.length; pi++) {
       var page = entity.pages[pi];
       var pageName = page.name || '';

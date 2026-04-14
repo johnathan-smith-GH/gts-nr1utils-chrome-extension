@@ -1,7 +1,6 @@
 import React from '../../snowpack/pkg/react.js';
 import { PageName } from '../types.js';
 
-// FIXME: Add in classnames
 const currentPageClass = (page, thisPage) => page === thisPage ? 'App-nav--currentLink' : '';
 
 const pageNameToLabel = {

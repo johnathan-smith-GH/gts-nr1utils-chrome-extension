@@ -1,4 +1,4 @@
-const decodeUrl = location => {
+const decodeUrlParams = location => {
   const sansQuestionParams = location.search.replace(/^\?/, '');
   const parts = sansQuestionParams.split('&');
   const data = parts.reduce((acc, part) => {
@@ -14,7 +14,7 @@ const decodeUrl = location => {
     return acc;
   }, {});
   return data;
-}; // FIXME: this name is confusing, not returning a string anymore
+};
 
 
 const getParamString = location => {
@@ -25,7 +25,7 @@ const getParamString = location => {
   }
 
   try {
-    return decodeUrl(location);
+    return decodeUrlParams(location);
   } catch (_) {
     return {
       error: 'Something broke!'

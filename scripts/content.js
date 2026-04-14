@@ -34,6 +34,9 @@
   script.onload = function () {
     script.remove();
   };
+  script.onerror = function () {
+    script.remove();
+  };
   (document.head || document.documentElement).appendChild(script);
 
   // ============================================================

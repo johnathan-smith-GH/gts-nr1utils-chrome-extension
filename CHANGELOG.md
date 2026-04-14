@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.12
+- Add React Error Boundary to prevent blank UI on component errors — shows error message with reload button
+- Add Content Security Policy to manifest.json (`script-src 'self'; object-src 'self'`)
+- Add parentheses for operator precedence clarity in App.js widget map extraction
+- Clean up SPA navigation poll interval on page unload in page-script.js
+- Rename `decodeUrl` to `decodeUrlParams` in getParamString.js and remove stale FIXME comments
+- Add script.onerror handler in content.js for page-script.js load failures
+
 ## 1.8.11
 - Enable GitHub Pages to serve User Guide and Under The Hood as rendered HTML
 - Update README doc links to point to GitHub Pages URLs instead of raw HTML files

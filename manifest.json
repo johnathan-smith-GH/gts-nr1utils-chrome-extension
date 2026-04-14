@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "GTS NR1 Utils",
   "description": "GTS utilities for NR1",
-  "version": "1.8.11",
+  "version": "1.8.12",
   "permissions": [
     "webNavigation",
     "tabs",
@@ -50,6 +50,9 @@
       "matches": ["https://*.newrelic.com/*"]
     }
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

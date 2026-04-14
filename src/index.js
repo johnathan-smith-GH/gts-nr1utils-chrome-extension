@@ -88,9 +88,46 @@ const browserApi = {
   removeEventListener: (evt, fn) => window.removeEventListener(evt, fn)
 };
 
-ReactDOM.createRoot(document.getElementById('root')).render( /*#__PURE__*/React.createElement(React.StrictMode, null, /*#__PURE__*/React.createElement(Provider, {
+// ============================================================
+// Error Boundary — catches render errors and shows recovery UI
+// ============================================================
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error: error };
+  }
+  componentDidCatch(error, info) {
+    console.error('[NR1 Utils] React error:', error, info.componentStack);
+  }
+  render() {
+    if (this.state.hasError) {
+      var self = this;
+      return React.createElement('div', {
+        style: { padding: '24px', fontFamily: 'system-ui, sans-serif', color: '#333' }
+      },
+        React.createElement('h2', { style: { color: '#e00', marginBottom: '12px' } }, 'Something went wrong'),
+        React.createElement('p', { style: { marginBottom: '12px', fontSize: '14px' } },
+          this.state.error ? String(this.state.error) : 'An unexpected error occurred.'
+        ),
+        React.createElement('button', {
+          onClick: function () { self.setState({ hasError: false, error: null }); },
+          style: {
+            padding: '8px 16px', borderRadius: '6px', border: 'none',
+            background: '#2563eb', color: '#fff', cursor: 'pointer', fontSize: '13px'
+          }
+        }, 'Reload Extension UI')
+      );
+    }
+    return this.props.children;
+  }
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render( /*#__PURE__*/React.createElement(React.StrictMode, null, /*#__PURE__*/React.createElement(ErrorBoundary, null, /*#__PURE__*/React.createElement(Provider, {
   store: store
 }, /*#__PURE__*/React.createElement(App, {
   chromeApi: chromeApi,
   browserApi: browserApi
-}))));
+})))));
