@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.8.15
+- Fix `parseTextStream.js` initial accumulator: change from `0` to `null` to prevent spurious data association when a `data:` line appears before any `id:` line
+
 ## 1.8.14
 - Add missing `.catch()` on `Promise.all` chain in page-script.js fetch wrapper
 - Fix `requests.sort()` mutating props array in Log.js — now copies before sorting
