@@ -284,29 +284,35 @@
 
       var lastTop = -1;
       var stableCount = 0;
+      var highlightShown = false;
+
+      function showOverlayAndFade() {
+        if (highlightShown) return;
+        highlightShown = true;
+        clearInterval(pollInterval);
+        positionOverlay();
+        overlay.style.opacity = '1';
+        setTimeout(function () {
+          if (overlay.parentNode) {
+            overlay.style.opacity = '0';
+            setTimeout(function () { if (overlay.parentNode) overlay.remove(); }, 500);
+          }
+        }, 2000);
+      }
+
       var pollInterval = setInterval(function () {
         var r = container.getBoundingClientRect();
         if (Math.abs(r.top - lastTop) < 1) { stableCount++; } else { stableCount = 0; }
         lastTop = r.top;
         positionOverlay();
         if (stableCount >= 3) {
-          clearInterval(pollInterval);
-          overlay.style.opacity = '1';
-          setTimeout(function () {
-            overlay.style.opacity = '0';
-            setTimeout(function () { overlay.remove(); }, 500);
-          }, 2000);
+          showOverlayAndFade();
         }
       }, 50);
 
+      // Safety: force display after 2 seconds if scroll never settles
       setTimeout(function () {
-        clearInterval(pollInterval);
-        positionOverlay();
-        overlay.style.opacity = '1';
-        setTimeout(function () {
-          overlay.style.opacity = '0';
-          setTimeout(function () { overlay.remove(); }, 500);
-        }, 2000);
+        showOverlayAndFade();
       }, 2000);
     }
 

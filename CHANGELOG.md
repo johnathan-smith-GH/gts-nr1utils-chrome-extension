@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.8.13
+- Add try-catch around `JSON.parse` calls in `buildNrqlRequests.js` to prevent crashes from malformed NRQL payloads
+- Auto-remove XHR event listeners after firing via `{ once: true }` in early-wrap.js and page-script.js to prevent listener accumulation
+- Fix widget highlight overlay: prevent double-clearInterval race and guard DOM removal in fade-out callbacks
+- Add `[currentQueryIdx]` dependency array to search-reset useEffect in RequestsPage.js (was running every render)
+- Clean up CSS Highlight API ranges and matchRangesRef on effect cleanup in RequestsPage.js
+- Normalize mixed `const`/`var` declarations in page-script.js to consistent `var`
+- Deduplicate `findAccountIds`: remove inline copies in RequestsPage.js and Log.js, import from utils
+
 ## 1.8.12
 - Add React Error Boundary to prevent blank UI on component errors — shows error message with reload button
 - Add Content Security Policy to manifest.json (`script-src 'self'; object-src 'self'`)

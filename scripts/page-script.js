@@ -31,7 +31,7 @@
   // ============================================================
   // Wrap fetch() — skip if early-wrap.js already did it
   // ============================================================
-  const originalFetch = earlyWrapped ? window.__NR1_ORIGINAL_FETCH__ : window.fetch;
+  var originalFetch = earlyWrapped ? window.__NR1_ORIGINAL_FETCH__ : window.fetch;
   if (!earlyWrapped) {
 
   /**
@@ -52,21 +52,21 @@
   }
 
   window.fetch = function (input, init) {
-    const method = (init && init.method) ? init.method.toUpperCase() : 'GET';
+    var method = (init && init.method) ? init.method.toUpperCase() : 'GET';
 
     if (method !== 'POST') {
       return originalFetch.apply(this, arguments);
     }
 
-    const url = (typeof input === 'string') ? input : (input instanceof Request ? input.url : String(input));
-    const rawBody = (init && init.body) ? init.body : '';
-    const startTime = performance.now();
+    var url = (typeof input === 'string') ? input : (input instanceof Request ? input.url : String(input));
+    var rawBody = (init && init.body) ? init.body : '';
+    var startTime = performance.now();
 
     // Read the request body before the fetch completes (body may be consumed)
     var requestBodyPromise = readBodyAsText(rawBody);
 
     return originalFetch.apply(this, arguments).then(function (response) {
-      const totalTime = performance.now() - startTime;
+      var totalTime = performance.now() - startTime;
 
       // Clone the response so we can read the body without consuming it
       var clone = response.clone();
@@ -137,15 +137,15 @@
         var responseBody;
         try { responseBody = xhr.responseText || ''; } catch (e) { responseBody = ''; }
         handleXhrDone(responseBody);
-      });
+      }, { once: true });
 
       xhr.addEventListener('error', function () {
         handleXhrDone('');
-      });
+      }, { once: true });
 
       xhr.addEventListener('abort', function () {
         handleXhrDone('');
-      });
+      }, { once: true });
     }
 
     return originalSend.apply(this, arguments);

@@ -207,15 +207,15 @@
         var responseBody;
         try { responseBody = xhr.responseText || ''; } catch (e) { responseBody = ''; }
         handleXhrDone(responseBody);
-      });
+      }, { once: true });
 
       xhr.addEventListener('error', function () {
         handleXhrDone('');
-      });
+      }, { once: true });
 
       xhr.addEventListener('abort', function () {
         handleXhrDone('');
-      });
+      }, { once: true });
     }
     return originalSend.apply(this, arguments);
   };

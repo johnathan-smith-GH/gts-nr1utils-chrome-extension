@@ -1,26 +1,8 @@
 import React from '../../snowpack/pkg/react.js';
 import LogEntry from './LogEntry.js';
+import findAccountIds from '../utils/findAccountIds.js';
 
 const currentLogClass = (thisIdx, idx) => `App-log-item ${idx === thisIdx ? 'App-log-item--selected' : ''}`;
-
-function getAccountIds(req) {
-  var ids = [];
-  function search(o) {
-    if (!o || typeof o !== 'object') return;
-    if (Array.isArray(o)) {
-      for (var i = 0; i < o.length; i++) search(o[i]);
-      return;
-    }
-    for (var key in o) {
-      if (key === 'account_ids' && Array.isArray(o[key])) {
-        o[key].forEach(function (id) { if (id != null) ids.push(String(id)); });
-      }
-      if (typeof o[key] === 'object') search(o[key]);
-    }
-  }
-  search(req);
-  return ids.filter(function (id, i, arr) { return arr.indexOf(id) === i; });
-}
 
 const Log = props => {
   const {
@@ -73,7 +55,7 @@ const Log = props => {
   var multiAccountResults = [];
   var allAccountIds = {};
   sortedByStartTime.forEach(function (req) {
-    var ids = getAccountIds(req);
+    var ids = findAccountIds(req);
     ids.forEach(function (id) { allAccountIds[id] = (allAccountIds[id] || 0) + 1; });
     if (ids.length > 1) multiAccountResults.push(req);
   });
@@ -82,7 +64,7 @@ const Log = props => {
   // Apply multi-account filter (placeholders are now included in requests from RequestsPage)
   var widgetPlaceholders = requests.filter(function (r) { return r._isPlaceholder; });
   var displayRequests = showMultiAccountOnly
-    ? sortedByStartTime.filter(function (req) { return getAccountIds(req).length > 1; })
+    ? sortedByStartTime.filter(function (req) { return findAccountIds(req).length > 1; })
     : sortedByStartTime;
 
   const allVisibleIndices = displayRequests.map((_, idx) => idx);
