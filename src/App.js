@@ -1,4 +1,4 @@
-import React, { useEffect } from '../snowpack/pkg/react.js';
+import React, { useEffect, useRef } from '../snowpack/pkg/react.js';
 import { connect } from '../snowpack/pkg/react-redux.js';
 import './App.css.proxy.js';
 import Navigation from './components/Navigation.js';
@@ -7,11 +7,25 @@ import { PageName } from './types.js';
 import RequestsPage from './components/RequestsPage.js';
 import buildGraphqlRequests from './utils/graphql/buildGraphqlRequests.js';
 import buildNrqlRequests from './utils/nrql/buildNrqlRequests.js';
+import buildNrqlFromSignals from './utils/nrql/buildNrqlFromSignals.js';
 import extractNrqlFromGraphql from './utils/nrql/extractNrqlFromGraphql.js';
+import buildDtRequests from './utils/dt/buildDtRequests.js';
 import DebugInfoPage from './components/DebugInfoPage.js';
+import statusPriority from './utils/statusPriority.js';
 const {
   actions
 } = rootSlice;
+
+var SIGNAL_EVAL_HOST = 'bork-sniffer';
+var _legacyRidCounter = 0;
+
+function parseRequestUrl(urlString, origin) {
+  try {
+    return new URL(urlString);
+  } catch (_) {
+    return new URL(urlString, origin || 'https://one.newrelic.com');
+  }
+}
 
 const mapStateToProps = state => ({
   currentPage: state.currentPage,
@@ -21,9 +35,7 @@ const mapStateToProps = state => ({
   logFilter: state.logFilter,
   gqlRequests: state.gqlRequests,
   nrqlRequests: state.nrqlRequests,
-  showVerbose: state.showVerbose,
-  showTiming: state.showTiming,
-  selectedIndices: state.selectedIndices,
+  selectedRequestIds: state.selectedRequestIds,
   showOnlyErrors: state.showOnlyErrors,
   showOnlyTimeouts: state.showOnlyTimeouts,
   debugPlatformInfo: state.debugPlatformInfo,
@@ -41,10 +53,8 @@ const mapDispatchToProps = {
   setLogFilter: event => actions.setLogFilter(event.target.value),
   updateGqlRequests: reqs => actions.updateGqlRequests(reqs),
   clearLog: () => actions.clearLog(),
-  clearAllRequests: () => actions.clearAllRequests(),
+  clearAllRequests: (opts) => actions.clearAllRequests(opts),
   updateNrqlRequests: reqs => actions.updateNrqlRequests(reqs),
-  setShowVerbose: event => actions.setShowVerbose(event.target.checked),
-  setShowTiming: event => actions.setShowTiming(event.target.checked),
   setShowOnlyErrors: event => actions.setShowOnlyErrors(event.target.checked),
   setShowOnlyTimeouts: event => actions.setShowOnlyTimeouts(event.target.checked),
   toggleSelectedIndex: idx => actions.toggleSelectedIndex(idx),
@@ -70,8 +80,8 @@ function extractWidgetMapFromDashboard(graphqlRequests) {
     var req = graphqlRequests[i];
     if (!req.name || (req.name.indexOf('DashboardEntity') === -1 && req.name.indexOf('GetDashboard') === -1)) continue;
     var resp = req.response;
-    if (!resp || !resp.data) continue;
-    var entity = resp.data.actor && resp.data.actor.entity;
+    if (!resp || !resp.data || !resp.data.actor) continue;
+    var entity = resp.data.actor.entity;
     if (!entity || !entity.pages) continue;
     var dashboardAccountId = entity.accountId || null;
     var dashboardOwnerEmail = (entity.owner && entity.owner.email) || null;
@@ -113,6 +123,17 @@ const App = props => {
     chromeApi,
     browserApi
   } = props;
+
+  // Ref to avoid stale closure when reading preserveLog inside mount-only effect
+  const preserveLogRef = useRef(props.preserveLog);
+  preserveLogRef.current = props.preserveLog;
+
+  const processRequestRef = useRef(null);
+  const processRequestStartRef = useRef(null);
+  const processRequestCompleteRef = useRef(null);
+  const propsRef = useRef(props);
+  propsRef.current = props;
+
   /**
    * Resizes page to match window height so that CSS works properly with fixed nav
    */
@@ -146,52 +167,66 @@ const App = props => {
       updateNrqlRequests
     } = props;
 
-    try {
-      if (!data.url || !data.timing) return;
-      const url = new URL(data.url);
-      const requestPayloadText = data.requestBody;
-      const responseText = data.responseBody;
-      const timing = {
-        startTime: data.timing.startTime,
-        blockedTime: data.timing.blockedTime || 0,
-        totalTime: data.timing.totalTime
-      };
+    if (!data.url || !data.timing) return;
+    const url = parseRequestUrl(data.url, data.origin);
+    if (!url) return;
+    const requestPayloadText = data.requestBody;
+    const responseText = data.responseBody;
+    const timing = {
+      startTime: Number(data.timing.startTime) || 0,
+      blockedTime: Number(data.timing.blockedTime) || 0,
+      totalTime: Number(data.timing.totalTime) || 0
+    };
 
-      if (url.pathname.match('graphql')) {
+    try {
+      if (url.pathname.includes('/graphql')) {
         const graphqlRequests = buildGraphqlRequests(requestPayloadText, responseText, timing);
+        graphqlRequests.forEach(function (r) { if (!r.requestId) r.requestId = 'legacy-' + (++_legacyRidCounter); });
         updateGqlRequests(graphqlRequests);
 
-        // Also extract NRQL queries embedded in GraphQL requests
         const nrqlFromGraphql = extractNrqlFromGraphql(graphqlRequests);
         if (nrqlFromGraphql.length > 0) {
+          nrqlFromGraphql.forEach(function (r) { if (!r.requestId) r.requestId = 'legacy-' + (++_legacyRidCounter); });
           updateNrqlRequests(nrqlFromGraphql);
         }
 
-        // Extract widget map from dashboard entity queries
         var legacyDashboardWidgets = extractWidgetMapFromDashboard(graphqlRequests);
         if (legacyDashboardWidgets.length > 0) {
           props.setWidgetMap(legacyDashboardWidgets);
         }
       }
 
-      if (url.pathname.match('nrql')) {
+      if (url.pathname.includes('/nrql')) {
         const nrqlRequests = buildNrqlRequests(requestPayloadText, responseText, timing);
+        nrqlRequests.forEach(function (r) { if (!r.requestId) r.requestId = 'legacy-' + (++_legacyRidCounter); });
         updateNrqlRequests(nrqlRequests);
       }
 
+      if (url.hostname && url.hostname.indexOf(SIGNAL_EVAL_HOST) !== -1) {
+        const signalNrqlRequests = buildNrqlFromSignals(requestPayloadText, responseText, timing);
+        signalNrqlRequests.forEach(function (r) { if (!r.requestId) r.requestId = 'legacy-' + (++_legacyRidCounter); });
+        if (signalNrqlRequests.length > 0) updateNrqlRequests(signalNrqlRequests);
+      }
+
+      if (url.hostname && url.hostname.includes('distributed-tracing')) {
+        const dtRequests = buildDtRequests(requestPayloadText, responseText, timing, url.pathname);
+        dtRequests.forEach(function (r) { if (!r.requestId) r.requestId = 'legacy-' + (++_legacyRidCounter); });
+        if (dtRequests.length > 0) updateNrqlRequests(dtRequests);
+      }
     } catch (e) {
-      // Silently ignore — expected for relative or malformed URLs
+      console.warn('[NR1 Utils]', 'Error processing request:', e);
     }
   };
 
   const processRequestStart = data => {
     const { addPendingGqlRequest, addPendingNrqlRequest } = props;
+    if (!data.url) return;
+    const url = parseRequestUrl(data.url, data.origin);
+    if (!url) return;
     try {
-      if (!data.url) return;
-      const url = new URL(data.url);
       const requestPayloadText = data.requestBody;
 
-      if (url.pathname.match('graphql')) {
+      if (url.pathname.includes('/graphql')) {
         var pendingRequests;
         try {
           const requestPayload = JSON.parse(requestPayloadText);
@@ -234,7 +269,7 @@ const App = props => {
         addPendingGqlRequest(pendingRequests);
       }
 
-      if (url.pathname.match('nrql')) {
+      if (url.pathname.includes('/nrql')) {
         var nrqlQuery = '';
         var nrqlName = 'Pending NRQL';
         var nrqlVars = {};
@@ -265,29 +300,36 @@ const App = props => {
         if (data.stackSummary) nrqlPendingObj.stackSummary = data.stackSummary;
         addPendingNrqlRequest([nrqlPendingObj]);
       }
-    } catch (e) {}
+
+      // DT requests are handled in processRequestComplete — no pending entry needed
+      // since the traceGroups response splits into multiple entries on completion
+    } catch (e) {
+      console.warn('[NR1 Utils]', 'Error processing request start:', e);
+    }
   };
 
   const processRequestComplete = data => {
     const { completeRequest, updateGqlRequests, updateNrqlRequests } = props;
+    if (!data.url || !data.timing) return;
+    const url = parseRequestUrl(data.url, data.origin);
+    if (!url) return;
     try {
-      if (!data.url || !data.timing) return;
-      const url = new URL(data.url);
       const requestPayloadText = data.requestBody;
       const responseText = data.responseBody;
       const timing = {
-        startTime: data.timing.startTime,
-        blockedTime: data.timing.blockedTime || 0,
-        totalTime: data.timing.totalTime
+        startTime: Number(data.timing.startTime) || 0,
+        blockedTime: Number(data.timing.blockedTime) || 0,
+        totalTime: Number(data.timing.totalTime) || 0
       };
 
-      if (url.pathname.match('graphql')) {
+      if (url.pathname.includes('/graphql')) {
         const graphqlRequests = buildGraphqlRequests(requestPayloadText, responseText, timing);
         // Update each pending request with full data
         graphqlRequests.forEach(function (req) {
           var isTimeout = req.errors && JSON.stringify(req.errors).match(/timeout/i);
           completeRequest({
             requestId: data.requestId,
+            id: req.id,
             updates: {
               query: req.query,
               variables: req.variables,
@@ -314,7 +356,7 @@ const App = props => {
         }
       }
 
-      if (url.pathname.match('nrql')) {
+      if (url.pathname.includes('/nrql')) {
         const nrqlRequests = buildNrqlRequests(requestPayloadText, responseText, timing);
         nrqlRequests.forEach(function (req) {
           completeRequest({
@@ -332,8 +374,24 @@ const App = props => {
           });
         });
       }
-    } catch (e) {}
+
+      if (url.hostname && url.hostname.indexOf(SIGNAL_EVAL_HOST) !== -1) {
+        const signalNrqlRequests = buildNrqlFromSignals(requestPayloadText, responseText, timing);
+        if (signalNrqlRequests.length > 0) updateNrqlRequests(signalNrqlRequests);
+      }
+
+      if (url.hostname && url.hostname.includes('distributed-tracing')) {
+        const dtRequests = buildDtRequests(requestPayloadText, responseText, timing, url.pathname);
+        if (dtRequests.length > 0) updateNrqlRequests(dtRequests);
+      }
+    } catch (e) {
+      console.warn('[NR1 Utils]', 'Error processing request complete:', e);
+    }
   };
+
+  processRequestRef.current = processRequest;
+  processRequestStartRef.current = processRequestStart;
+  processRequestCompleteRef.current = processRequestComplete;
 
   useEffect(() => {
     resizeWindow();
@@ -341,41 +399,56 @@ const App = props => {
     // Listen for messages from the service worker via port
     const onPortMessage = message => {
       if (message.action === 'NEW_REQUEST_START') {
-        processRequestStart(message);
+        processRequestStartRef.current(message);
       }
 
       if (message.action === 'NEW_REQUEST_COMPLETE') {
-        processRequestComplete(message);
+        processRequestCompleteRef.current(message);
       }
 
       if (message.action === 'NEW_REQUEST') {
-        processRequest(message);
+        processRequestRef.current(message);
       }
 
       if (message.action === 'BUFFERED_REQUESTS') {
-        message.requests.forEach(req => processRequest(req));
+        message.requests.forEach(req => processRequestRef.current(req));
+      }
+
+      if (message.action === 'PAGE_NAVIGATED') {
+        if (!preserveLogRef.current && message.fullNavigation) {
+          propsRef.current.clearAllRequests({ clearWidgets: true });
+        }
       }
 
       if (message.action === 'DEBUG_INFO_RESET') {
-        props.resetDebugInfo();
+        propsRef.current.resetDebugInfo();
       }
 
       if (message.action === 'PLATFORM_INFO' && message.data) {
-        props.setDebugPlatformInfo(message.data);
+        propsRef.current.setDebugPlatformInfo(message.data);
       }
 
       if (message.action === 'NERDPACK_METADATA' && Array.isArray(message.data)) {
-        props.setDebugNerdpacks(message.data);
+        propsRef.current.setDebugNerdpacks(message.data);
       }
 
       if (message.action === 'NERDLET_CHANGED' && message.data) {
-        props.setDebugCurrentNerdlet(message.data);
+        propsRef.current.setDebugCurrentNerdlet(message.data);
+      }
+
+      if (message.action === 'RESTORED_WIDGET_MAP') {
+        if (Array.isArray(message.data) && message.data.length > 0) {
+          propsRef.current.setWidgetMap(message.data);
+        }
+        return;
       }
     };
 
     chromeApi.port.onMessage.addListener(onPortMessage);
     browserApi.addEventListener('resize', resizeWindow);
 
+    // Signal background that listeners are ready — triggers buffered data send
+    chromeApi.port.postMessage({ action: 'PANEL_READY' });
     // Request cached debug info from the background script
     chromeApi.port.postMessage({ action: 'GET_DEBUG_INFO' });
 
@@ -385,6 +458,21 @@ const App = props => {
     };
   }, []);
 
+  useEffect(function () {
+    props.chromeApi.port.postMessage({ action: 'SET_PRESERVE_LOG', value: props.preserveLog });
+  }, [props.preserveLog]);
+
+  const widgetMapInitRef = useRef(false);
+  useEffect(function () {
+    // Skip the initial mount — don't overwrite background's stored map before PANEL_READY restores it
+    if (!widgetMapInitRef.current) {
+      widgetMapInitRef.current = true;
+      return;
+    }
+    var map = props.widgetMap || [];
+    props.chromeApi.port.postMessage({ action: 'WIDGET_MAP_UPDATE', data: map });
+  }, [props.widgetMap]);
+
   const {
     currentPage,
     currentQueryIdx,
@@ -393,16 +481,12 @@ const App = props => {
     windowHeight,
     gqlRequests,
     nrqlRequests,
-    showVerbose,
     setCurrentPage,
     clearLog,
     setCurrentQueryIdx,
     setPreserveLog,
     setLogFilter,
-    setShowVerbose,
-    showTiming,
-    setShowTiming,
-    selectedIndices,
+    selectedRequestIds,
     showOnlyErrors,
     setShowOnlyErrors,
     showOnlyTimeouts,
@@ -425,22 +509,16 @@ const App = props => {
   if (logFilter.length) {
     var filterLower = logFilter.toLowerCase();
     visibleLogData = visibleLogData.filter(function (request) {
-      return JSON.stringify(request).toLowerCase().includes(filterLower);
+      return (request._searchableText || '').includes(filterLower);
     });
   }
   if (showOnlyErrors) {
     visibleLogData = visibleLogData.filter(function (request) { return !!request.errors; });
   }
   if (showOnlyTimeouts) {
-    visibleLogData = visibleLogData.filter(function (request) { return request.errors && JSON.stringify(request.errors).match(/timeout/i); });
+    visibleLogData = visibleLogData.filter(function (request) { return !!request._isTimeout; });
   }
-  function statusPriority(req) {
-    if (req.status === 'pending') return 0;
-    if (req.status === 'error' || req.status === 'timeout') return 1;
-    if (req.errors) return 1;
-    return 2;
-  }
-  visibleLogData = visibleLogData.sort(function (a, b) {
+  visibleLogData = [...visibleLogData].sort(function (a, b) {
     var pa = statusPriority(a);
     var pb = statusPriority(b);
     if (pa !== pb) return pa - pb;
@@ -455,10 +533,6 @@ const App = props => {
     clearLog: clearLog,
     preserveLog: preserveLog,
     handlePreserveLog: setPreserveLog,
-    showVerbose: showVerbose,
-    setShowVerbose: setShowVerbose,
-    showTiming: showTiming,
-    setShowTiming: setShowTiming,
     showOnlyErrors: showOnlyErrors,
     setShowOnlyErrors: setShowOnlyErrors,
     showOnlyTimeouts: showOnlyTimeouts,
@@ -466,8 +540,8 @@ const App = props => {
     logData: currentLogData,
     visibleLogData: visibleLogData,
     allRequests: { gqlRequests: gqlRequests, nrqlRequests: nrqlRequests },
-    selectedIndices: selectedIndices,
-    selectedCount: selectedIndices.length
+    selectedRequestIds: selectedRequestIds,
+    selectedCount: selectedRequestIds.length
   }), currentPage === PageName.GRAPHQL_REQUESTS && /*#__PURE__*/React.createElement(RequestsPage, {
     windowHeight: windowHeight,
     logData: gqlRequests,
@@ -475,13 +549,11 @@ const App = props => {
     currentQueryIdx: currentQueryIdx,
     logFilter: logFilter,
     updateLogFilter: setLogFilter,
-    showVerbose: showVerbose,
-    showTiming: showTiming,
     showOnlyErrors: showOnlyErrors,
     setShowOnlyErrors: setShowOnlyErrors,
     showOnlyTimeouts: showOnlyTimeouts,
     setShowOnlyTimeouts: setShowOnlyTimeouts,
-    selectedIndices: selectedIndices,
+    selectedRequestIds: selectedRequestIds,
     toggleSelectedIndex: toggleSelectedIndex,
     selectAllVisible: selectAllVisible,
     clearSelectedIndices: clearSelectedIndices
@@ -492,13 +564,11 @@ const App = props => {
     currentQueryIdx: currentQueryIdx,
     logFilter: logFilter,
     updateLogFilter: setLogFilter,
-    showVerbose: showVerbose,
-    showTiming: showTiming,
     showOnlyErrors: showOnlyErrors,
     setShowOnlyErrors: setShowOnlyErrors,
     showOnlyTimeouts: showOnlyTimeouts,
     setShowOnlyTimeouts: setShowOnlyTimeouts,
-    selectedIndices: selectedIndices,
+    selectedRequestIds: selectedRequestIds,
     toggleSelectedIndex: toggleSelectedIndex,
     selectAllVisible: selectAllVisible,
     clearSelectedIndices: clearSelectedIndices,

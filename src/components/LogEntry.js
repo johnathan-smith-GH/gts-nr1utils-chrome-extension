@@ -7,13 +7,11 @@ const LogEntry = props => {
     setCurrentQueryIdx,
     isSelected,
     className,
-    overallStartTime,
-    overallEndTime,
     isChecked,
-    onToggleSelect
+    onToggleSelect,
+    now
   } = props;
   const ref = useRef(null);
-  const [elapsed, setElapsed] = React.useState(0);
 
   useEffect(() => {
     if (isSelected) {
@@ -25,15 +23,9 @@ const LogEntry = props => {
     }
   }, [isSelected]);
 
-  // Live timer for pending requests
+  // Elapsed time for pending requests — driven by shared `now` prop from parent
   var timingStartTime = request.timing ? request.timing.startTime : 0;
-  useEffect(() => {
-    if (request.status !== 'pending' || !request.timing) return;
-    var interval = setInterval(function () {
-      setElapsed(Date.now() - timingStartTime);
-    }, 100);
-    return function () { clearInterval(interval); };
-  }, [request.status, timingStartTime]);
+  var elapsed = (request.status === 'pending' && request.timing) ? (now || Date.now()) - timingStartTime : 0;
 
   const handleKeyDown = event => {
     if (event.key === 'Enter') {
@@ -44,7 +36,7 @@ const LogEntry = props => {
   const logRequest = request;
   const isPlaceholder = request._isPlaceholder;
   const isPending = request.status === 'pending';
-  const isTimeout = !isPending && !isPlaceholder && request.errors && JSON.stringify(request.errors).match(/timeout/i);
+  const isTimeout = !isPending && !isPlaceholder && !!request._isTimeout;
   const isError = !isPending && !isPlaceholder && !!request.errors;
 
   const truncateName = name => name.length > 28 ? `${name.slice(0, 28)}...` : name;
@@ -54,7 +46,7 @@ const LogEntry = props => {
 
   const handleCheckboxChange = (e) => {
     e.stopPropagation();
-    onToggleSelect(idx);
+    onToggleSelect(props.rid);
   };
 
   // Determine timing label and value
@@ -87,6 +79,8 @@ const LogEntry = props => {
   var typeClass = 'App-requestType';
   if (isPlaceholder) {
     typeClass += ' App-requestType--defined';
+  } else if (request.type === 'TRACE') {
+    typeClass += ' App-requestType--trace';
   } else if (isPending) {
     typeClass += ' App-requestType--pending';
   } else if (isError) {
@@ -107,18 +101,22 @@ const LogEntry = props => {
     checked: isChecked,
     onChange: handleCheckboxChange,
     onClick: (e) => e.stopPropagation()
-  }), /*#__PURE__*/React.createElement("span", {
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "App-logEntryContent"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "App-logEntryRow1"
+  }, /*#__PURE__*/React.createElement("span", {
     className: typeClass
   }, request.type), /*#__PURE__*/React.createElement("span", {
     className: `App-requestName ${isError ? 'App-requestName--withErrors' : ''}`,
     title: name
-  }, name), /*#__PURE__*/React.createElement("span", {
-    className: "App-flexBreak"
-  }), /*#__PURE__*/React.createElement("span", {
+  }, name)), /*#__PURE__*/React.createElement("div", {
+    className: "App-logEntryRow2"
+  }, /*#__PURE__*/React.createElement("span", {
     className: timingLabelClass
   }, timingLabel), /*#__PURE__*/React.createElement("span", {
     className: timingValueClass
-  }, timingValue));
+  }, timingValue))));
 };
 
 export default /*#__PURE__*/React.memo(LogEntry);

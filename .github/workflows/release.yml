@@ -18,8 +18,8 @@ jobs:
       - name: Check for version change
         id: version
         run: |
-          NEW_VERSION=$(jq -r '.version' manifest.json)
-          OLD_VERSION=$(git show HEAD~1:manifest.json 2>/dev/null | jq -r '.version' 2>/dev/null || echo "")
+          NEW_VERSION=$(cat manifest.json | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])")
+          OLD_VERSION=$(git show HEAD~1:manifest.json 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])" 2>/dev/null || echo "")
           if [ "$NEW_VERSION" != "$OLD_VERSION" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"

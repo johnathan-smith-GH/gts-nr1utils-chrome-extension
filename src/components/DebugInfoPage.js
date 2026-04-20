@@ -70,14 +70,14 @@ const DebugInfoPage = (props) => {
     var sshMatch = url.match(/^git@([^:]+):(.+?)(?:\.git)?$/);
     if (sshMatch) {
       url = 'https://' + sshMatch[1] + '/' + sshMatch[2];
-    } else if (url.indexOf('://') === -1) {
+    } else if (!url.includes('://')) {
       url = 'https://' + url;
     }
     // Strip trailing .git for clean browser URLs
     url = url.replace(/\.git$/, '');
-    if (url.indexOf('github.com') !== -1) {
+    if (url.includes('github.com')) {
       repoLink = { href: url, text: "View it on GitHub" };
-    } else if (url.indexOf('source.datanerd.us') !== -1) {
+    } else if (url.includes('source.datanerd.us')) {
       repoLink = { href: url, text: "View it on GHE" };
     } else {
       repoLink = { href: url, text: url };

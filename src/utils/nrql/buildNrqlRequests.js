@@ -9,9 +9,9 @@ const buildNrqlRequests = (requestPayloadText, textStream, timing) => {
     return [{ id: -1, variables: null, query: '', response: null, errors: [{ message: 'Failed to parse request body' }], status: 'error', type: LogRequestType.UNKNOWN, name: 'Malformed Request', timing }];
   }
   try {
-    response = JSON.parse(textStream);
+    response = textStream ? JSON.parse(textStream) : null;
   } catch (e) {
-    response = { message: 'Failed to parse response body' };
+    response = { _parseError: true, message: 'Failed to parse response body' };
   }
   const requestPayloads = Array.isArray(requestPayload) ? requestPayload : [requestPayload];
   return requestPayloads.map(payloadRequest => {
@@ -24,8 +24,8 @@ const buildNrqlRequests = (requestPayloadText, textStream, timing) => {
       },
       query: payloadRequest.nrql || payloadRequest.query,
       response: response,
-      errors: response.message,
-      status: response.message ? 'error' : 'success',
+      errors: response && response._parseError ? [{ message: response.message }] : (response && response.error ? [{ message: response.error }] : null),
+      status: response && response._parseError ? 'error' : (response && response.error ? 'error' : 'success'),
       type: payloadRequest.raw ? LogRequestType.RAW : LogRequestType.CHART,
       name: parsedQuery.name,
       timing

@@ -116,11 +116,11 @@
     <ul>
       <li><strong><code>early-wrap.js</code></strong> — Injected into the page's main world via manifest (<code>world: "MAIN"</code>, <code>run_at: "document_start"</code>). Wraps <code>window.fetch</code> and <code>XMLHttpRequest.prototype.open/send</code> before any page JavaScript executes. Sends two-phase messages via <code>window.postMessage</code> restricted to <code>window.location.origin</code>. XHR wrappers listen for <code>load</code>, <code>error</code>, and <code>abort</code> events to track all request outcomes.</li>
       <li><strong><code>page-script.js</code></strong> — Loaded asynchronously into the main world via a <code>&lt;script src&gt;</code> tag injected by <code>content.js</code>. Handles debug info collection (platform info, nerdpack metadata, nerdlet navigation). Skips fetch/XHR wrapping if <code>early-wrap.js</code> already did it (checks <code>window.__NR1_UTILS_EARLY_WRAP__</code>).</li>
-      <li><strong><code>content.js</code></strong> — Runs in the isolated world at <code>document_start</code>. Bridges between the main world (page scripts) and the service worker via <code>window.addEventListener('message')</code> and <code>chrome.runtime.sendMessage</code>. Detects SPA navigation by wrapping <code>history.pushState/replaceState</code>. Also executes the "Locate on Page" widget highlight logic directly in the DOM (8 search strategies + scroll-to-lazy-load).</li>
-      <li><strong><code>background.js</code></strong> — Service worker. Routes messages between content scripts and the side panel via a Chrome runtime port (<code>nr1-utils-panel</code>). Buffers requests, caches debug info, and manages nerdpack metadata fetching via <code>chrome.scripting.executeScript</code>.</li>
+      <li><strong><code>content.js</code></strong> — Runs in the isolated world at <code>document_start</code>. Bridges between the main world (page scripts) and the service worker via <code>window.addEventListener('message')</code> and <code>chrome.runtime.sendMessage</code>. Detects SPA navigation by listening for <code>popstate</code> and <code>hashchange</code> events. Also executes the "Locate on Page" widget highlight logic directly in the DOM (7 search strategies + scroll-to-lazy-load).</li>
+      <li><strong><code>background.js</code></strong> — Service worker. Routes messages between content scripts and the side panel via a Chrome runtime port (<code>nr1-utils-panel</code>). Uses a <code>PANEL_READY</code> handshake so the panel signals readiness before buffered data is sent. Persists <code>widgetMap</code> and <code>preserveLog</code> to <code>chrome.storage.session</code> to survive service worker restarts. Validates incoming messages for required fields. Buffers requests, caches debug info, and manages nerdpack metadata fetching via <code>chrome.scripting.executeScript</code>.</li>
     </ul>
     <p><strong>Message flow:</strong> <code>early-wrap.js</code> (main world) → <code>window.postMessage</code> (origin-restricted) → <code>content.js</code> (isolated world) → <code>chrome.runtime.sendMessage</code> → <code>background.js</code> (service worker) → <code>port.postMessage</code> → side panel (<code>App.js</code>)</p>
-    <p><strong>Security:</strong> All <code>window.postMessage</code> calls use <code>window.location.origin</code> as the target origin (not <code>'*'</code>) to prevent cross-origin message interception. All <code>chrome.tabs.query</code> results are null-checked before tab access. Promise chains include <code>.catch()</code> handlers to prevent unhandled rejections.</p>
+    <p><strong>Security:</strong> All <code>window.postMessage</code> calls use <code>window.location.origin</code> as the target origin (not <code>'*'</code>) to prevent cross-origin message interception. All <code>chrome.tabs.query</code> results are null-checked before tab access. Promise chains include <code>.catch()</code> handlers to prevent unhandled rejections. Incoming messages are validated for required fields. The <code>completeRequest</code> reducer uses a <code>safeAssign</code> helper to prevent prototype pollution from network data. Content script message handlers validate <code>sender.id</code> matches the extension.</p>
   </div>
 
   <h2>Request Capture &amp; Display</h2>
@@ -175,6 +175,26 @@
       <li>NRQL queries embedded in GraphQL requests are extracted by <code>extractNrqlFromGraphql.js</code>, which searches variables for strings matching <code>/\bSELECT\b.*\bFROM\b/i</code> patterns.</li>
       <li>Table name extracted via: <code>/from\s+(\S+)/i</code></li>
     </ul>
+    <h3>Distributed Tracing</h3>
+    <p>Handled by <code>buildDtRequests.js</code></p>
+    <ul>
+      <li>URL matching: <code>url.hostname.includes('distributed-tracing')</code> — checked in both <code>processRequest()</code> and <code>processRequestComplete()</code> in <code>App.js</code></li>
+      <li>Only POST requests are captured (<code>early-wrap.js</code> skips all non-POST methods), so GET endpoints like <code>/api/v2/trace/attributeNames</code> are automatically excluded</li>
+      <li>No pending entry is created in <code>processRequestStart()</code> because a single traceGroups response is split into multiple display entries on completion</li>
+    </ul>
+    <h4>Captured Endpoints</h4>
+    <table>
+      <tr><th>Endpoint</th><th>Entries Created</th><th>Names</th></tr>
+      <tr><td><code>POST /api/v2/analytics/traceGroups</code></td><td>3</td><td>Trace count, Trace duration (ms), Trace groups</td></tr>
+      <tr><td><code>POST /api/v2/trace/errors</code></td><td>1</td><td>Trace errors</td></tr>
+    </table>
+    <ul>
+      <li>Each entry gets <code>type: LogRequestType.TRACE</code> and a <code>_dtVisualizationTitle</code> field used by Locate on Page (see below)</li>
+      <li>The query string is synthesized from the request body: limit, duration, sort, and active filter count (e.g., <code>"50 trace groups over 60min, sorted by count, filtered by 2 conditions"</code>)</li>
+      <li><strong>Memory optimization:</strong> Only the last entry in a traceGroups response (Trace groups) receives the full parsed response object — earlier entries get a <code>_summary</code> reference instead. This avoids tripling large payloads (&gt;1 MB) in Redux state.</li>
+      <li>DT entries are routed to the NRQL tab via <code>updateNrqlRequests()</code></li>
+      <li>In <code>RequestsPage.js</code>, if a request has a <code>_dtVisualizationTitle</code>, it is used directly as the widget match title for the Locate on Page button (bypassing the dashboard widget map lookup)</li>
+    </ul>
   </div>
 
   <h3>Live Timer</h3>
@@ -201,7 +221,7 @@
   <div class="tech-section">
     <h3>Search for Results (Left Panel)</h3>
     <ul>
-      <li>Filters the request list by <code>JSON.stringify(request).toLowerCase().includes(filter)</code></li>
+      <li>Each request has a pre-computed <code>_searchableText</code> field (built at ingest time) that is searched for the filter term</li>
       <li>Searches across all fields: query, variables, response, errors, name, timing, etc.</li>
     </ul>
     <h3>Search Within Result (Right Panel)</h3>
@@ -332,7 +352,7 @@
     <ul>
       <li><code>matchWidgetByNrql(request, widgetMap)</code> in <code>RequestsPage.js</code> matches a captured NRQL query to a dashboard widget</li>
       <li><strong>Pass 1 — Exact match:</strong> Normalizes whitespace and compares lowercased query text</li>
-      <li><strong>Pass 2 — Substring match:</strong> Checks if one query contains the other, handling NR1 runtime modifications to query aliases (e.g., <code>'Slowest 10%'</code> becoming <code>'Slowest 10% (s) (90%)'</code>)</li>
+      <li><strong>Pass 2 — Substring match:</strong> Checks if one query contains the other, handling NR1 runtime modifications to query aliases (e.g., <code>'Slowest 10%'</code> becoming <code>'Slowest 10% (s) (90%)'</code>). Scores matches by query length similarity, preferring the most specific (closest length) match.</li>
       <li>Widget titles are also included in the search filter logic, so users can search by widget name</li>
     </ul>
   </div>
@@ -357,13 +377,13 @@
     </ul>
     <h4>DOM Search Strategies (tried in order)</h4>
     <ol>
+      <li value="0"><strong>CardBase container with heading</strong> — Queries all <code>[class*="CardBase"]</code>, <code>[class*="card-base"]</code>, <code>section</code>, and <code>article</code> elements. Prefers the smallest card that contains a heading (<code>h1</code>–<code>h6</code>) matching the title text; falls back to textContent-only containment if no heading match exists. Returns the container directly (skips the walk-up step). Effective for DT visualizations and dashboard widgets rendered inside NR1 card components.</li>
       <li><strong>Exact leaf-node textContent</strong> — Matches elements with no children whose <code>textContent</code> exactly equals the widget title</li>
       <li><strong>Exact innerText on small elements</strong> — Matches elements under 100px tall whose <code>innerText</code> equals the title</li>
       <li><strong>textContent with children (size-bounded)</strong> — Matches elements under 60px tall / 600px wide, allowing child nodes (handles NR1 titles with tooltip icons)</li>
       <li><strong>Title attribute</strong> — Matches elements whose HTML <code>title</code> attribute equals the widget title (handles CSS-truncated titles)</li>
       <li><strong>aria-label</strong> — Matches elements whose <code>aria-label</code> equals the widget title</li>
       <li><strong>startsWith innerText</strong> — Matches elements whose innerText starts with the widget title (handles appended icon text like info badges)</li>
-      <li><strong>React fiber tree</strong> — Searches React fiber props (<code>__reactFiber$</code>) on grid/widget/card elements for <code>title</code>, <code>name</code>, or <code>widgetTitle</code> props</li>
       <li><strong>TreeWalker text node</strong> — Walks all text nodes in the document body for an exact match</li>
     </ol>
     <h4>Scroll-to-Lazy-Load</h4>
@@ -403,9 +423,10 @@
   <h3>Widget Map Management</h3>
   <div class="tech-section">
     <ul>
-      <li>The <code>setWidgetMap</code> Redux action merges new widgets with existing ones, deduplicating by <code>widgetId</code>. This supports multi-tab dashboards where each tab's widgets arrive in separate GraphQL responses.</li>
+      <li>The <code>setWidgetMap</code> Redux action merges new widgets with existing ones, deduplicating by <code>widgetId</code> + <code>pageName</code>. This supports multi-tab dashboards where each tab's widgets arrive in separate GraphQL responses.</li>
       <li>When the widget map is updated, all existing NRQL requests in state are eagerly re-matched against the new map. This ensures widgets detected after their NRQL queries fired still get correlated.</li>
       <li>The widget map is cleared when "Clear Log" is clicked on the NRQL tab.</li>
+      <li>The widget map is persisted to <code>chrome.storage.session</code> alongside the request buffer. On service worker restart or panel reconnection, the background sends a <code>RESTORED_WIDGET_MAP</code> message after the panel signals <code>PANEL_READY</code>.</li>
     </ul>
   </div>
 
@@ -414,7 +435,7 @@
     <ul>
       <li><code>captureComponentHint()</code> in <code>early-wrap.js</code> captures <code>new Error().stack</code> synchronously at fetch/XHR intercept time</li>
       <li>Parses stack frames, skipping internal extension files (<code>early-wrap.js</code>, <code>page-script.js</code>, <code>content.js</code>)</li>
-      <li>Searches for component-relevant patterns: <code>Widget</code>, <code>Chart</code>, <code>Billboard</code>, <code>Table</code>, <code>Line</code>, <code>Bar</code>, <code>Pie</code>, <code>Nrql</code>, <code>Dashboard</code>, <code>Visualization</code>, etc.</li>
+      <li>Searches for component-relevant patterns: <code>Widget</code>, <code>Chart</code>, <code>Billboard</code>, <code>NrqlQuery</code>, <code>Dashboard</code>, <code>Visualization</code>, <code>Funnel</code>, <code>Heatmap</code>, <code>Histogram</code>, <code>Scatter</code>, <code>Stacked</code></li>
       <li>Extracts the function name from the first matching frame as <code>componentHint</code></li>
       <li>Keeps the first 5 meaningful frames as <code>stackSummary</code></li>
       <li>Both fields are passed through the message pipeline (<code>content.js</code> → <code>background.js</code> → <code>App.js</code>) and stored on request objects</li>
@@ -452,6 +473,7 @@
       <tr><td><code>src/utils/graphql/buildGraphqlRequests.js</code></td><td>Parse GraphQL request/response into structured objects</td></tr>
       <tr><td><code>src/utils/nrql/buildNrqlRequests.js</code></td><td>Parse NRQL request/response</td></tr>
       <tr><td><code>src/utils/nrql/extractNrqlFromGraphql.js</code></td><td>Extract embedded NRQL from GraphQL requests, widget hint extraction</td></tr>
+      <tr><td><code>src/utils/dt/buildDtRequests.js</code></td><td>Parse distributed tracing API responses into per-visualization entries</td></tr>
       <tr><td><code>src/App.css</code></td><td>All styles (must regenerate <code>App.css.proxy.js</code> after changes)</td></tr>
       <tr><td><code>src/App.css.proxy.js</code></td><td>Snowpack CSS proxy — inlines CSS as JS string. <strong>Must be regenerated</strong> after any CSS edit.</td></tr>
     </table>

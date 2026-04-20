@@ -1,28 +1,33 @@
 import { createSlice } from '../../snowpack/pkg/@reduxjs/toolkit.js';
 import { PageName } from '../types.js';
-import { setCurrentPage, setCurrentQueryIdx, setPreserveLog, setWindowHeight, setLogFilter, updateGqlRequests, clearLog, clearAllRequests, updateNrqlRequests, setUrlParameters, setShowVerbose, setModifiedUrlParameters, setShowTiming, setShowOnlyErrors, setShowOnlyTimeouts, setDebugPlatformInfo, setDebugNerdpacks, setDebugCurrentNerdlet, resetDebugInfo, toggleSelectedIndex, selectAllVisible, clearSelectedIndices, addPendingGqlRequest, addPendingNrqlRequest, completeRequest, setWidgetMap } from './actionCreators.js';
-const showVerbose = localStorage.getItem('showVerbose');
-const preserveLog = localStorage.getItem('preserveLog');
-const showTiming = localStorage.getItem('showTiming');
+import { setCurrentPage, setCurrentQueryIdx, setPreserveLog, setWindowHeight, setLogFilter, updateGqlRequests, clearLog, clearAllRequests, updateNrqlRequests, setShowOnlyErrors, setShowOnlyTimeouts, setDebugPlatformInfo, setDebugNerdpacks, setDebugCurrentNerdlet, resetDebugInfo, toggleSelectedIndex, selectAllVisible, clearSelectedIndices, addPendingGqlRequest, addPendingNrqlRequest, completeRequest, setWidgetMap } from './actionCreators.js';
+
+function safeParseBool(key, defaultValue) {
+  try {
+    var raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : defaultValue;
+  } catch (e) {
+    return defaultValue;
+  }
+}
+
 const initialState = {
   currentPage: PageName.GRAPHQL_REQUESTS,
   currentQueryIdx: undefined,
-  preserveLog: preserveLog ? JSON.parse(preserveLog) : false,
+  preserveLog: safeParseBool('preserveLog', false),
   windowHeight: undefined,
   logFilter: '',
   gqlRequests: [],
   nrqlRequests: [],
-  showVerbose: showVerbose ? JSON.parse(showVerbose) : false,
-  modifiedUrlParameters: '',
-  showTiming: showTiming ? JSON.parse(showTiming) : true,
   showOnlyErrors: false,
   showOnlyTimeouts: false,
   debugPlatformInfo: null,
   debugNerdpacks: [],
   debugCurrentNerdletId: null,
   debugEntityGuid: null,
-  selectedIndices: [],
-  widgetMap: []
+  selectedRequestIds: [],
+  widgetMap: [],
+  _widgetNrqlIndex: null
 };
 const rootSlice = createSlice({
   name: 'root',
@@ -37,10 +42,6 @@ const rootSlice = createSlice({
     clearLog,
     clearAllRequests,
     updateNrqlRequests,
-    setUrlParameters,
-    setShowVerbose,
-    setModifiedUrlParameters,
-    setShowTiming,
     setShowOnlyErrors,
     setShowOnlyTimeouts,
     setDebugPlatformInfo,

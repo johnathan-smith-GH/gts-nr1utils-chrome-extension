@@ -54,7 +54,7 @@ const buildGraphqlRequests = (requestPayloadText, data, timing) => {
     });
   }
 
-  const isTextStream = data.match(/^id:.*/);
+  const isTextStream = typeof data === 'string' && data.match(/^id:.*/);
   var datasets;
   try {
     datasets = isTextStream ? parseTextStream(data) : JSON.parse(data);
@@ -77,15 +77,27 @@ const buildGraphqlRequests = (requestPayloadText, data, timing) => {
 
   return requestPayloads.map((payloadRequest, idx) => {
     const parsedQuery = parseGraphqlListing(payloadRequest.query);
-    const responsePayload = datasets[payloadRequest.id] ? JSON.parse(datasets[payloadRequest.id]) : datasets;
-    const queryResponse = Array.isArray(responsePayload) ? responsePayload[idx].payload : responsePayload;
+    var responsePayload;
+    try {
+      var individualData = datasets[payloadRequest.id];
+      if (individualData !== undefined) {
+        responsePayload = typeof individualData === 'string' ? JSON.parse(individualData) : individualData;
+      } else {
+        responsePayload = datasets;
+      }
+    } catch (e) {
+      responsePayload = datasets;
+    }
+    const queryResponse = Array.isArray(responsePayload)
+      ? (responsePayload[idx] && responsePayload[idx].payload ? responsePayload[idx].payload : responsePayload[idx] || responsePayload)
+      : responsePayload;
     return {
       id: payloadRequest.id,
       query: formatGraphql(payloadRequest.query),
       variables: payloadRequest.variables,
       response: queryResponse,
-      errors: queryResponse.errors,
-      status: queryResponse.errors ? (function () { try { return JSON.stringify(queryResponse.errors).match(/timeout/i) ? 'timeout' : 'error'; } catch (e) { return 'error'; } })() : 'success',
+      errors: (queryResponse && typeof queryResponse === 'object' && queryResponse.errors) ? queryResponse.errors : null,
+      status: (queryResponse && typeof queryResponse === 'object' && queryResponse.errors) ? (function () { try { return JSON.stringify(queryResponse.errors).match(/timeout/i) ? 'timeout' : 'error'; } catch (e) { return 'error'; } })() : 'success',
       type: parsedQuery.type,
       name: parsedQuery.name,
       timing

@@ -1,10 +1,12 @@
 import { LogRequestType } from '../../types.js';
 
 const parseNrqlListing = query => {
-  const parsedQuery = query.match(/from (\S+)(\W)/i) || [null, 'chart', `${query.slice(0, 24)}...`];
+  if (!query || typeof query !== 'string') return { type: LogRequestType.UNKNOWN, name: '' };
+  // Match FROM followed by an identifier (skip subqueries like "FROM (SELECT ...")
+  const parsedQuery = query.match(/from\s+([A-Za-z]\w*)(?:\W|$)/i);
   return {
     type: LogRequestType.UNKNOWN,
-    name: parsedQuery[1] || ''
+    name: parsedQuery ? (parsedQuery[1] || '') : `${query.slice(0, 24)}...`
   };
 };
 

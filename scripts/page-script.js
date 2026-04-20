@@ -61,6 +61,7 @@
     var url = (typeof input === 'string') ? input : (input instanceof Request ? input.url : String(input));
     var rawBody = (init && init.body) ? init.body : '';
     var startTime = performance.now();
+    var absStartTime = Date.now();
 
     // Read the request body before the fetch completes (body may be consumed)
     var requestBodyPromise = readBodyAsText(rawBody);
@@ -70,7 +71,8 @@
 
       // Clone the response so we can read the body without consuming it
       var clone = response.clone();
-      var textWithTimeout = Promise.race([clone.text().catch(function () { return ''; }), new Promise(function (resolve) { setTimeout(function () { resolve(''); }, 5000); })]);
+      var MAX_BODY_SIZE = 5 * 1024 * 1024; // 5MB cap on captured response bodies
+      var textWithTimeout = Promise.race([clone.text().then(function (t) { return t.length > MAX_BODY_SIZE ? '[Response too large (>5MB)]' : t; }).catch(function () { return ''; }), new Promise(function (resolve) { setTimeout(function () { resolve(''); }, 5000); })]);
       Promise.all([requestBodyPromise, textWithTimeout]).then(function (results) {
         try {
           sendToContentScript({
@@ -78,7 +80,7 @@
             requestBody: results[0],
             responseBody: results[1],
             timing: {
-              startTime: Date.now() - totalTime,
+              startTime: absStartTime,
               totalTime: totalTime,
               blockedTime: 0
             }
@@ -86,9 +88,26 @@
         } catch (e) {
           // Silently ignore errors to avoid breaking the page
         }
-      }).catch(function () {});
+      }).catch(function (e) { console.warn('[NR1 Utils page-script]', e); });
 
       return response;
+    }).catch(function (err) {
+      // Post an error-state message so failed fetches appear in the log
+      requestBodyPromise.then(function (reqBody) {
+        try {
+          sendToContentScript({
+            url: url,
+            requestBody: reqBody,
+            responseBody: '',
+            timing: {
+              startTime: absStartTime,
+              totalTime: performance.now() - startTime,
+              blockedTime: 0
+            }
+          });
+        } catch (e) {}
+      }).catch(function (e) { console.warn('[NR1 Utils page-script]', e); });
+      throw err; // Re-throw so the caller still gets the error
     });
   };
   } // end if (!earlyWrapped) for fetch
@@ -111,6 +130,7 @@
 
     if (xhr.__nr1_method && xhr.__nr1_method.toUpperCase() === 'POST') {
       var startTime = performance.now();
+      var absStartTime = Date.now();
       var bodyPromise = readBodyAsText(body);
 
       function handleXhrDone(responseBody) {
@@ -122,7 +142,7 @@
               requestBody: requestBody,
               responseBody: responseBody,
               timing: {
-                startTime: Date.now() - totalTime,
+                startTime: absStartTime,
                 totalTime: totalTime,
                 blockedTime: 0
               }
@@ -153,294 +173,10 @@
   } // end if (!earlyWrapped) for XHR
 
   // ============================================================
-  // Widget highlight: find and highlight a widget on the page
-  // ============================================================
-  function highlightWidgetOnPage(widgetTitle, widgetId) {
-    var LOG = '[NR1 Utils Locate]';
-
-    // Remove any existing highlight
-    var existing = document.getElementById('nr1-utils-widget-highlight');
-    if (existing) existing.remove();
-
-    console.log(LOG, 'Looking for widget:', { title: widgetTitle, id: widgetId });
-
-    if (!widgetTitle) {
-      console.warn(LOG, 'No widget title provided, cannot locate');
-      return;
-    }
-
-    var targetElement = null;
-    var strategyUsed = '';
-    var allElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, span, div, p, a');
-    var titleLower = widgetTitle.toLowerCase().trim();
-
-    // Strategy 1: Exact leaf-node textContent match
-    for (var i = 0; i < allElements.length; i++) {
-      var el = allElements[i];
-      var text = (el.textContent || '').trim().toLowerCase();
-      if (text === titleLower && el.children.length === 0) {
-        targetElement = el;
-        strategyUsed = '1: exact leaf-node textContent';
-        break;
-      }
-    }
-
-    // Strategy 2: innerText match on small elements
-    if (!targetElement) {
-      for (var j = 0; j < allElements.length; j++) {
-        var el2 = allElements[j];
-        var innerText = (el2.innerText || '').trim().toLowerCase();
-        if (innerText === titleLower && el2.offsetHeight < 100) {
-          targetElement = el2;
-          strategyUsed = '2: exact innerText on small element';
-          break;
-        }
-      }
-    }
-
-    // Strategy 3: textContent match allowing child elements (size-bounded)
-    // NR1 widget titles often have child nodes (tooltip icons, info badges)
-    if (!targetElement) {
-      for (var k = 0; k < allElements.length; k++) {
-        var el3 = allElements[k];
-        var text3 = (el3.textContent || '').trim().toLowerCase();
-        if (text3 === titleLower && el3.offsetHeight < 60 && el3.offsetWidth < 600) {
-          targetElement = el3;
-          strategyUsed = '3: exact textContent with children (size-bounded)';
-          break;
-        }
-      }
-    }
-
-    // Strategy 4: title attribute match (handles truncated/ellipsized titles)
-    if (!targetElement) {
-      var titled = document.querySelectorAll('[title]');
-      for (var t = 0; t < titled.length; t++) {
-        var titleAttr = (titled[t].getAttribute('title') || '').trim().toLowerCase();
-        if (titleAttr === titleLower) {
-          targetElement = titled[t];
-          strategyUsed = '4: title attribute';
-          break;
-        }
-      }
-    }
-
-    // Strategy 5: aria-label match
-    if (!targetElement) {
-      var ariaLabeled = document.querySelectorAll('[aria-label]');
-      for (var a = 0; a < ariaLabeled.length; a++) {
-        var ariaLabel = (ariaLabeled[a].getAttribute('aria-label') || '').trim().toLowerCase();
-        if (ariaLabel === titleLower) {
-          targetElement = ariaLabeled[a];
-          strategyUsed = '5: aria-label';
-          break;
-        }
-      }
-    }
-
-    // Strategy 6: startsWith match on innerText (title with appended icon text)
-    if (!targetElement) {
-      var bestCandidate = null;
-      var bestLen = Infinity;
-      for (var s = 0; s < allElements.length; s++) {
-        var el6 = allElements[s];
-        var inner6 = (el6.innerText || '').trim().toLowerCase();
-        if (inner6.length > 0 && inner6.length < 200 && el6.offsetHeight < 60) {
-          if (inner6.indexOf(titleLower) === 0 && inner6.length < bestLen) {
-            bestCandidate = el6;
-            bestLen = inner6.length;
-          }
-        }
-      }
-      if (bestCandidate) {
-        targetElement = bestCandidate;
-        strategyUsed = '6: startsWith innerText';
-      }
-    }
-
-    // Strategy 7: React fiber tree search for widget title in props
-    if (!targetElement) {
-      var gridItems = document.querySelectorAll('[class*="grid"], [class*="widget"], [class*="Widget"], [class*="card"], [class*="Card"], [data-testid]');
-      for (var g = 0; g < gridItems.length; g++) {
-        var gridEl = gridItems[g];
-        var fiberKey = Object.keys(gridEl).find(function (key) {
-          return key.startsWith('__reactFiber$') || key.startsWith('__reactInternalInstance$');
-        });
-        if (!fiberKey) continue;
-        var fiber = gridEl[fiberKey];
-        var current = fiber;
-        var maxDepth = 15;
-        while (current && maxDepth-- > 0) {
-          if (current.memoizedProps) {
-            var fiberProps = current.memoizedProps;
-            var propTitle = fiberProps.title || fiberProps.name || fiberProps.widgetTitle || '';
-            if (typeof propTitle === 'string' && propTitle.toLowerCase().trim() === titleLower) {
-              targetElement = gridEl;
-              strategyUsed = '7: React fiber props';
-              break;
-            }
-          }
-          current = current.return;
-        }
-        if (targetElement) break;
-      }
-    }
-
-    // Strategy 8: TreeWalker to find title text in any text node
-    if (!targetElement) {
-      var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-      while (walker.nextNode()) {
-        var node = walker.currentNode;
-        if (node.textContent.trim().toLowerCase() === titleLower) {
-          targetElement = node.parentElement;
-          strategyUsed = '8: TreeWalker text node';
-          break;
-        }
-      }
-    }
-
-    if (!targetElement) {
-      console.warn(LOG, 'Could not find widget title in DOM:', JSON.stringify(widgetTitle));
-      // Log close matches for debugging
-      var close = [];
-      for (var d = 0; d < allElements.length; d++) {
-        var dt = (allElements[d].innerText || '').trim().toLowerCase();
-        if (dt.length > 0 && dt.length < 100 && titleLower.length >= 6 && dt.indexOf(titleLower.slice(0, 6)) !== -1) {
-          close.push({ tag: allElements[d].tagName, text: dt, children: allElements[d].children.length, h: allElements[d].offsetHeight });
-        }
-      }
-      if (close.length > 0) {
-        console.warn(LOG, 'Closest DOM matches:', close.slice(0, 10));
-      } else {
-        console.warn(LOG, 'No elements found containing even the first 6 chars of the title');
-      }
-      return;
-    }
-
-    console.log(LOG, 'Found via strategy:', strategyUsed, targetElement);
-
-    // Walk up to find the widget container (the chart/visualization wrapper)
-    // Look for a parent that looks like a widget card (has reasonable size)
-    var container = targetElement;
-    var maxWalk = 10;
-    while (container.parentElement && maxWalk-- > 0) {
-      var parent = container.parentElement;
-      var rect = parent.getBoundingClientRect();
-      // Stop when we find a container that's at least 200px wide and tall
-      // but not the entire page
-      if (rect.width >= 200 && rect.height >= 150 && rect.width < window.innerWidth * 0.9) {
-        container = parent;
-        break;
-      }
-      container = parent;
-    }
-
-    // Find the scrollable parent (the dashboard's scroll container)
-    var scrollParent = container.parentElement;
-    while (scrollParent && scrollParent !== document.body) {
-      var overflow = window.getComputedStyle(scrollParent).overflowY;
-      if (overflow === 'auto' || overflow === 'scroll') break;
-      scrollParent = scrollParent.parentElement;
-    }
-    if (!scrollParent) scrollParent = document.documentElement;
-
-    // Scroll the container into view
-    container.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-    // Create highlight overlay
-    var overlay = document.createElement('div');
-    overlay.id = 'nr1-utils-widget-highlight';
-    overlay.style.cssText = [
-      'position: fixed',
-      'pointer-events: none',
-      'z-index: 999999',
-      'border: 3px solid #7c3aed',
-      'border-radius: 8px',
-      'box-shadow: 0 0 20px rgba(124, 58, 237, 0.4), inset 0 0 20px rgba(124, 58, 237, 0.05)',
-      'transition: opacity 0.5s ease',
-      'opacity: 0'
-    ].join('; ');
-
-    document.body.appendChild(overlay);
-
-    function positionOverlay() {
-      var rect = container.getBoundingClientRect();
-      overlay.style.top = rect.top + 'px';
-      overlay.style.left = rect.left + 'px';
-      overlay.style.width = rect.width + 'px';
-      overlay.style.height = rect.height + 'px';
-    }
-
-    // Wait for scroll to settle by polling until position stabilizes
-    var lastTop = -1;
-    var stableCount = 0;
-    var pollInterval = setInterval(function () {
-      var rect = container.getBoundingClientRect();
-      if (Math.abs(rect.top - lastTop) < 1) {
-        stableCount++;
-      } else {
-        stableCount = 0;
-      }
-      lastTop = rect.top;
-      positionOverlay();
-
-      // Position is stable for 3 consecutive checks (150ms) — show the overlay
-      if (stableCount >= 3) {
-        clearInterval(pollInterval);
-        overlay.style.opacity = '1';
-
-        // Nudge the scroll container to trigger IntersectionObservers
-        // NR1 lazy-loads widget queries via IntersectionObserver which
-        // may not fire from programmatic scrollIntoView alone
-        try {
-          var savedScrollTop = scrollParent.scrollTop;
-          scrollParent.scrollTop = savedScrollTop + 1;
-          scrollParent.dispatchEvent(new Event('scroll', { bubbles: true }));
-          setTimeout(function () {
-            scrollParent.scrollTop = savedScrollTop;
-            scrollParent.dispatchEvent(new Event('scroll', { bubbles: true }));
-          }, 50);
-        } catch (e) {}
-
-        // Fade out after 2 seconds
-        setTimeout(function () {
-          overlay.style.opacity = '0';
-          setTimeout(function () {
-            overlay.remove();
-          }, 500);
-        }, 2000);
-      }
-    }, 50);
-
-    // Safety: clear poll after 2 seconds if scroll never settles
-    setTimeout(function () {
-      clearInterval(pollInterval);
-      positionOverlay();
-      overlay.style.opacity = '1';
-      // Nudge scroll for safety timeout path too
-      try {
-        var savedTop = scrollParent.scrollTop;
-        scrollParent.scrollTop = savedTop + 1;
-        scrollParent.dispatchEvent(new Event('scroll', { bubbles: true }));
-        setTimeout(function () {
-          scrollParent.scrollTop = savedTop;
-          scrollParent.dispatchEvent(new Event('scroll', { bubbles: true }));
-        }, 50);
-      } catch (e) {}
-      setTimeout(function () {
-        overlay.style.opacity = '0';
-        setTimeout(function () {
-          overlay.remove();
-        }, 500);
-      }, 2000);
-    }, 2000);
-  }
-
-  // ============================================================
   // Location request handler
   // ============================================================
   window.addEventListener('message', function (event) {
-    if (event.source !== window) return;
+    if (event.source !== window || event.origin !== window.location.origin) return;
     if (event.data && event.data.type === 'NR1_UTILS_GET_LOCATION') {
       window.postMessage({
         type: 'NR1_UTILS_LOCATION_RESPONSE',
@@ -449,10 +185,6 @@
         pathname: window.location.pathname,
         search: window.location.search
       }, window.location.origin);
-    }
-
-    if (event.data && event.data.type === 'NR1_UTILS_HIGHLIGHT_WIDGET') {
-      highlightWidgetOnPage(event.data.widgetTitle, event.data.widgetId);
     }
 
     if (event.data && event.data.type === 'NR1_UTILS_GET_DEBUG_INFO') {
@@ -594,11 +326,12 @@
     var attempts = 0;
     var maxAttempts = 60; // 30 seconds at 500ms intervals
 
-    var pollForAppShell = setInterval(function () {
+    appShellPollId = setInterval(function () {
       attempts++;
 
       if (window.UNSTABLE_app_shell && window.UNSTABLE_app_shell.navigationStateContext) {
-        clearInterval(pollForAppShell);
+        clearInterval(appShellPollId);
+        appShellPollId = null;
 
         try {
           var navCtx = window.UNSTABLE_app_shell.navigationStateContext;
@@ -653,7 +386,8 @@
       }
 
       if (attempts >= maxAttempts) {
-        clearInterval(pollForAppShell);
+        clearInterval(appShellPollId);
+        appShellPollId = null;
       }
     }, 500);
   }
@@ -668,7 +402,7 @@
 
     function doFetch() {
       var graphqlUrl = window.location.origin + '/graphql';
-      console.log('[NR1 Utils page] Starting NerdGraph fetch to', graphqlUrl);
+      console.debug('[NR1 Utils page] Starting NerdGraph fetch to', graphqlUrl);
       originalFetch(graphqlUrl, {
         method: 'POST',
         credentials: 'include',
@@ -691,7 +425,7 @@
         }
         if (json && json.data && json.data.actor && json.data.actor.nerdpacks) {
           var versions = json.data.actor.nerdpacks.effectiveSubscribedVersions || [];
-          console.log('[NR1 Utils page] NerdGraph fetch SUCCESS, nerdpacks:', versions.length);
+          console.debug('[NR1 Utils page] NerdGraph fetch SUCCESS, nerdpacks:', versions.length);
           debugInfoCache.nerdpacks = versions;
           window.postMessage({
             type: 'NR1_UTILS_NERDPACK_METADATA',
@@ -717,24 +451,50 @@
   // ============================================================
   var lastHref = window.location.href;
 
-  var navigationPollId = setInterval(function () {
-    if (window.location.href !== lastHref) {
-      lastHref = window.location.href;
-      // Re-read platform info on SPA navigation (accountId, nerdlet may change)
-      readPlatformInfo();
+  var navigationPollId = null;
+  var appShellPollId = null;
+
+  function startNavigationPoll() {
+    if (navigationPollId) return;
+    navigationPollId = setInterval(function () {
+      if (window.location.href !== lastHref) {
+        lastHref = window.location.href;
+        // Re-read platform info on SPA navigation (accountId, nerdlet may change)
+        readPlatformInfo();
+      }
+    }, 1000);
+  }
+
+  function stopNavigationPoll() {
+    if (navigationPollId) {
+      clearInterval(navigationPollId);
+      navigationPollId = null;
     }
-  }, 1000);
+  }
+
+  startNavigationPoll();
+
+  // Pause polling when tab is hidden, resume when visible
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      stopNavigationPoll();
+    } else {
+      lastHref = window.location.href;
+      startNavigationPoll();
+    }
+  });
 
   // Clean up polling when the page unloads
   window.addEventListener('pagehide', function () {
-    clearInterval(navigationPollId);
+    if (appShellPollId) { clearInterval(appShellPollId); appShellPollId = null; }
+    stopNavigationPoll();
   });
 
   // ============================================================
   // Debug Info: Initialize after a delay to let NR1 load
   // ============================================================
   setTimeout(function () {
-    console.log('[NR1 Utils page] 2s init timer fired, starting debug info collection');
+    console.debug('[NR1 Utils page] 2s init timer fired, starting debug info collection');
     readPlatformInfo();
     subscribeToNavigation();
     fetchNerdpackMetadata();

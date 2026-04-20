@@ -7,6 +7,7 @@ const typeMap = {
 };
 
 const parseGraphqlListing = query => {
+  if (!query || typeof query !== 'string') return { type: LogRequestType.QUERY, name: '' };
   const parsedQuery = query.match(/(query|mutation|subscription)\s+([\w]+)/) || query.match(/(query|mutation|subscription)\s*[\(\{]/);
   if (parsedQuery) {
     return {

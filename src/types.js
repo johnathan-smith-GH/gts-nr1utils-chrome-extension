@@ -1,7 +1,6 @@
 export let PageName;
 
 (function (PageName) {
-  PageName["URL_PARAMETERS"] = "URL_PARAMETERS";
   PageName["GRAPHQL_REQUESTS"] = "GRAPHQL_REQUESTS";
   PageName["NRQL_REQUESTS"] = "NRQL_REQUESTS";
   PageName["DEBUG_INFO"] = "DEBUG_INFO";
@@ -15,4 +14,5 @@ export let LogRequestType;
   LogRequestType["RAW"] = "RAW";
   LogRequestType["CHART"] = "CHART";
   LogRequestType["UNKNOWN"] = "UNKNOWN";
+  LogRequestType["TRACE"] = "TRACE";
 })(LogRequestType || (LogRequestType = {}));

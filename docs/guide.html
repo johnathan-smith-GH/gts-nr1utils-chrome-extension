@@ -170,6 +170,13 @@
           <li><a href="#inaccessible-widgets">Inaccessible Widgets</a></li>
         </ul>
       </li>
+      <li><a href="#distributed-tracing">Distributed Tracing Capture</a>
+        <ul>
+          <li><a href="#dt-captured-entries">Captured Entries</a></li>
+          <li><a href="#dt-query-summaries">Query Summaries</a></li>
+          <li><a href="#dt-locate-on-page">Locate on Page</a></li>
+        </ul>
+      </li>
       <li><a href="#debug-mode">Debug Mode</a></li>
       <li><a href="#known-limitations">Known Limitations</a></li>
     </ul>
@@ -233,7 +240,7 @@
     <p>When no results are selected, the Export button is greyed out with a tooltip: <em>"Select at least one result to export."</em></p>
 
     <h3 id="preserve-clear">Preserve Log &amp; Clear Log</h3>
-    <p>The <strong>Preserve log</strong> checkbox keeps captured requests when navigating between pages on the New Relic site. Without it, requests are cleared on each page navigation. This setting is saved to localStorage and persists across sessions.</p>
+    <p><strong>Preserve log</strong> is enabled by default — captured requests are kept when navigating between pages on the New Relic site. The setting is stored internally in the extension's state (saved to localStorage) and persists across sessions, but there is no UI toggle for it. To clear accumulated results, use the Clear Log button.</p>
     <p>The <span class="pill pill-red">CLEAR LOG</span> button removes all captured results from the current tab, including any grey widget placeholder entries. With Preserve Log enabled, this is the only way to clear results — they otherwise persist across page navigation within the same tab.</p>
   </div>
 
@@ -334,6 +341,30 @@
     <div class="note">
       <strong>Note:</strong> The source account for inaccessible widgets is not exposed by the New Relic platform. The NerdGraph API returns empty configuration data for these widgets, so the extension cannot identify which account is involved. To determine the source account, contact the dashboard owner or an admin who can view the widget configuration.
     </div>
+  </div>
+
+  <h2 id="distributed-tracing">Distributed Tracing Capture</h2>
+  <div class="section">
+    <p>When viewing the New Relic Distributed Tracing page (<code>/distributed-tracing/</code>), the extension captures API requests to <code>distributed-tracing.service.newrelic.com</code> and surfaces them as structured entries in the NRQL tab. Each entry is marked with an orange <span class="pill" style="background:#e67e22;">TRACE</span> badge.</p>
+
+    <h3 id="dt-captured-entries">Captured Entries</h3>
+    <p>The extension splits distributed tracing API responses into individual entries based on the endpoint:</p>
+    <table>
+      <tr><th>Endpoint</th><th>Entries produced</th></tr>
+      <tr><td><code>traceGroups</code></td><td>3 entries: <strong>Trace count</strong>, <strong>Trace duration (ms)</strong>, <strong>Trace groups</strong></td></tr>
+      <tr><td><code>errors</code></td><td>1 entry: <strong>Trace errors</strong></td></tr>
+    </table>
+    <p>These entries appear alongside regular NRQL results in the NRQL tab and work with the same search, filter, and export features.</p>
+
+    <h3 id="dt-query-summaries">Query Summaries</h3>
+    <p>Each entry includes a human-readable query summary describing the request parameters. For example:</p>
+    <ul>
+      <li><em>"100 trace groups over 30min, sorted by count"</em></li>
+    </ul>
+    <p>This makes it easy to understand what each request was asking for without inspecting the raw JSON.</p>
+
+    <h3 id="dt-locate-on-page">Locate on Page</h3>
+    <p>The <span class="pill" style="background:#7c3aed;">LOCATE ON PAGE</span> button works for distributed tracing entries. Clicking it scrolls to and highlights the corresponding chart or table section on the Distributed Tracing page, using the same highlight overlay as dashboard widget location.</p>
   </div>
 
   <h2 id="debug-mode">Debug Mode</h2>

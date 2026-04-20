@@ -2,9 +2,9 @@ import React from '../../snowpack/pkg/react.js';
 import { useRef, useEffect } from '../../snowpack/pkg/react.js';
 import { LogRequestType } from '../types.js';
 import Log from './Log.js';
-import ResponseDataSection from './ResponseDataSection.js';
 import findAccountIds from '../utils/findAccountIds.js';
 import matchWidgetByNrql from '../utils/matchWidgetByNrql.js';
+import statusPriority from '../utils/statusPriority.js';
 
 /**
  * Walk all text nodes inside a container and return Range objects
@@ -55,13 +55,11 @@ const RequestsPage = props => {
     logFilter,
     updateLogFilter,
     windowHeight,
-    showVerbose,
-    showTiming,
     showOnlyErrors,
     setShowOnlyErrors,
     showOnlyTimeouts,
     setShowOnlyTimeouts,
-    selectedIndices,
+    selectedRequestIds,
     toggleSelectedIndex,
     selectAllVisible,
     clearSelectedIndices,
@@ -73,57 +71,73 @@ const RequestsPage = props => {
   const [copyLabel, setCopyLabel] = React.useState('Copy JSON to Clipboard');
   const matchRangesRef = useRef([]);
   const resultsRef = useRef(null);
+  const selectedQueryRef = useRef(null);
 
   // Build placeholder entries for widget-defined NRQL queries not yet captured
-  var widgetPlaceholders = [];
-  if (widgetMap && widgetMap.length > 0) {
-    var capturedNrqlNormalized = {};
-    logData.forEach(function (req) {
-      if (req.query) capturedNrqlNormalized[req.query.replace(/\s+/g, ' ').trim().toLowerCase()] = true;
-    });
-    widgetMap.forEach(function (w) {
-      if (w.inaccessible || !w.nrqlQueries) return;
-      w.nrqlQueries.forEach(function (nrql) {
-        var norm = nrql.replace(/\s+/g, ' ').trim().toLowerCase();
-        var alreadyCaptured = false;
-        for (var key in capturedNrqlNormalized) {
-          if (key === norm || key.indexOf(norm) !== -1 || norm.indexOf(key) !== -1) {
-            alreadyCaptured = true;
-            break;
-          }
-        }
-        if (!alreadyCaptured) {
-          var fromMatch = nrql.match(/from\s+(\S+)/i);
-          widgetPlaceholders.push({
-            id: -1,
-            query: nrql,
-            variables: {},
-            response: null,
-            errors: null,
-            status: 'defined',
-            type: 'CHART',
-            name: fromMatch ? fromMatch[1] : nrql.slice(0, 24),
-            timing: null,
-            _widgetTitle: w.title,
-            _widgetId: w.widgetId,
-            _isPlaceholder: true,
-            _matchedWidget: { title: w.title, widgetId: w.widgetId, pageName: w.pageName }
-          });
+  var widgetPlaceholders = React.useMemo(function () {
+    var placeholders = [];
+    if (widgetMap && widgetMap.length > 0) {
+      // Build Set of normalized captured queries for O(1) exact lookup
+      var capturedExactSet = new Set();
+      var capturedNormList = [];
+      logData.forEach(function (req) {
+        if (req.query) {
+          var n = req.query.replace(/\s+/g, ' ').trim().toLowerCase();
+          capturedExactSet.add(n);
+          capturedNormList.push(n);
         }
       });
-    });
-  }
+      widgetMap.forEach(function (w) {
+        if (w.inaccessible || !w.nrqlQueries) return;
+        w.nrqlQueries.forEach(function (nrql) {
+          var norm = nrql.replace(/\s+/g, ' ').trim().toLowerCase();
+          // Fast exact check first
+          if (capturedExactSet.has(norm)) return;
+          // Substring fallback only when needed
+          var alreadyCaptured = false;
+          for (var ci = 0; ci < capturedNormList.length; ci++) {
+            if (capturedNormList[ci].indexOf(norm) !== -1 || norm.indexOf(capturedNormList[ci]) !== -1) {
+              alreadyCaptured = true;
+              break;
+            }
+          }
+          if (!alreadyCaptured) {
+            var fromMatch = nrql.match(/from\s+(\S+)/i);
+            placeholders.push({
+              _rid: 'placeholder-' + (w.widgetId || '') + '-' + nrql.slice(0, 20),
+              id: -1,
+              query: nrql,
+              variables: {},
+              response: null,
+              errors: null,
+              status: 'defined',
+              type: 'CHART',
+              name: fromMatch ? fromMatch[1] : nrql.slice(0, 24),
+              timing: null,
+              _widgetTitle: w.title,
+              _widgetId: w.widgetId,
+              _isPlaceholder: true,
+              _matchedWidget: { title: w.title, widgetId: w.widgetId, pageName: w.pageName }
+            });
+          }
+        });
+      });
+    }
+    return placeholders;
+  }, [widgetMap, logData]);
 
   var allRequests = widgetPlaceholders.concat(logData);
   const filteredRequests = logFilter.length ? allRequests.filter(function (request) {
     var filterLower = logFilter.toLowerCase();
-    if (JSON.stringify(request).toLowerCase().includes(filterLower)) return true;
-    // Also search matched widget title/page
+    if (request._searchableText && request._searchableText.includes(filterLower)) return true;
+    // Fallback for placeholders (no pre-computed text)
     var matched = request._matchedWidget || matchWidgetByNrql(request.query, widgetMap);
     if (matched) {
       var widgetStr = (matched.title + ' ' + matched.pageName + ' ' + matched.widgetId).toLowerCase();
       if (widgetStr.includes(filterLower)) return true;
     }
+    // Last resort: check query text directly
+    if (request.query && request.query.toLowerCase().includes(filterLower)) return true;
     return false;
   }) : allRequests;
   var visibleRequests = filteredRequests;
@@ -131,14 +145,51 @@ const RequestsPage = props => {
     visibleRequests = visibleRequests.filter(function (request) { return !!request.errors; });
   }
   if (showOnlyTimeouts) {
-    visibleRequests = visibleRequests.filter(function (request) { return request.errors && JSON.stringify(request.errors).match(/timeout/i); });
+    visibleRequests = visibleRequests.filter(function (request) { return !!request._isTimeout; });
   }
-  const currentQuery = currentQueryIdx !== undefined ? visibleRequests[currentQueryIdx] : undefined;
+  // Sort requests the same way Log.js will display them so that
+  // currentQueryIdx (set when the user clicks a list row) maps to the
+  // correct entry in both the rendered list and this detail pane.
+  var sortedRequests = React.useMemo(function () {
+    return [...visibleRequests].sort(function (a, b) {
+      var pa = statusPriority(a);
+      var pb = statusPriority(b);
+      if (pa !== pb) return pa - pb;
+      var aStart = a.timing ? a.timing.startTime : 0;
+      var bStart = b.timing ? b.timing.startTime : 0;
+      return bStart - aStart;
+    });
+  }, [visibleRequests]);
+  // Track the query of the currently selected entry so we can follow it
+  // when placeholder resolution causes list indices to shift
+  useEffect(function () {
+    if (currentQueryIdx !== undefined && sortedRequests[currentQueryIdx]) {
+      selectedQueryRef.current = sortedRequests[currentQueryIdx] ? sortedRequests[currentQueryIdx].query || null : null;
+    }
+  }, [currentQueryIdx]);
+
+  // Correct selection index when placeholder resolution shifts the list
+  useEffect(function () {
+    if (selectedQueryRef.current === null || selectedQueryRef.current === undefined || currentQueryIdx === undefined) return;
+    var currentItem = sortedRequests[currentQueryIdx];
+    if (currentItem && currentItem.query === selectedQueryRef.current) return;
+    var tracked = selectedQueryRef.current.replace(/\s+/g, ' ').trim().toLowerCase();
+    var bestIdx = -1;
+    for (var i = 0; i < sortedRequests.length; i++) {
+      var norm = (sortedRequests[i].query || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      if (norm === tracked || norm.indexOf(tracked) !== -1 || tracked.indexOf(norm) !== -1) {
+        bestIdx = i;
+        if (!sortedRequests[i]._isPlaceholder) break;
+      }
+    }
+    if (bestIdx !== -1 && bestIdx !== currentQueryIdx) {
+      setCurrentQueryIdx(bestIdx);
+    }
+  }, [currentQueryIdx, sortedRequests.length]);
+
+  const currentQuery = currentQueryIdx !== undefined ? sortedRequests[currentQueryIdx] : undefined;
   const pageHeightStyle = {
     height: windowHeight ? windowHeight - 45 : 'default'
-  };
-  const logHeightStyle = {
-    height: windowHeight ? windowHeight - 95 : 'default'
   };
 
   // Reset search when selecting a different query
@@ -153,7 +204,7 @@ const RequestsPage = props => {
 
   // Highlight matches using CSS Custom Highlight API
   useEffect(function () {
-    if (!CSS.highlights) return;
+    if (typeof CSS === 'undefined' || !CSS.highlights) return;
     CSS.highlights.delete('search-results');
     CSS.highlights.delete('search-current');
 
@@ -206,8 +257,7 @@ const RequestsPage = props => {
     var ranges = matchRangesRef.current;
     if (ranges.length === 0 || !CSS.highlights) return;
     setCurrentMatch(index);
-    CSS.highlights.set('search-current', new Highlight(ranges[index - 1]));
-    scrollToRange(ranges[index - 1]);
+    if (ranges[index - 1]) { CSS.highlights.set('search-current', new Highlight(ranges[index - 1])); scrollToRange(ranges[index - 1]); }
   }
 
   function handlePrev() {
@@ -237,19 +287,40 @@ const RequestsPage = props => {
     }
   }
 
+  // Pre-compute widget match and owning team to avoid redundant calls in JSX
+  var currentWidgetMatch = null;
+  if (currentQuery) {
+    // DT trace requests get their own visualization title — check first
+    if (currentQuery._dtVisualizationTitle) {
+      currentWidgetMatch = { title: currentQuery._dtVisualizationTitle, widgetId: null, pageName: null };
+    } else {
+      currentWidgetMatch = currentQuery._matchedWidget || matchWidgetByNrql(currentQuery.query, widgetMap);
+    }
+  }
+  var owningTeam = currentQuery ? findOwningTeam(currentQuery) : null;
+
+  // Safely stringify currentQuery for the raw JSON display
+  var currentQueryJson = '';
+  if (currentQuery) {
+    try {
+      currentQueryJson = JSON.stringify(currentQuery, null, 2);
+    } catch (e) {
+      currentQueryJson = '{"error": "Could not serialize query (possible circular reference)"}';
+    }
+  }
+
   return /*#__PURE__*/React.createElement("section", {
     className: "App-page App-graphQL"
   }, /*#__PURE__*/React.createElement(Log, {
     pageHeightStyle: {},
-    requests: visibleRequests,
+    requests: sortedRequests,
     setCurrentQueryIdx: setCurrentQueryIdx,
     currentQueryIdx: currentQueryIdx,
     logFilter: logFilter,
     updateLogFilter: updateLogFilter,
-    showTiming: showTiming,
     showOnlyErrors: showOnlyErrors,
     setShowOnlyErrors: setShowOnlyErrors,
-    selectedIndices: selectedIndices || [],
+    selectedRequestIds: selectedRequestIds || [],
     onToggleSelect: toggleSelectedIndex,
     onSelectAllVisible: selectAllVisible,
     onClearSelected: clearSelectedIndices,
@@ -290,6 +361,7 @@ const RequestsPage = props => {
   }, /*#__PURE__*/React.createElement("input", {
     type: "text",
     placeholder: "Search within result",
+    "aria-label": "Search within JSON result",
     value: jsonSearch,
     onChange: function (e) { setJsonSearch(e.target.value); },
     onKeyDown: handleKeyDown
@@ -310,48 +382,47 @@ const RequestsPage = props => {
   }, "\u2715")), /*#__PURE__*/React.createElement("div", {
     className: "App-copyResultBar"
   }, (function () {
-    var matched = currentQuery._matchedWidget || matchWidgetByNrql(currentQuery.query, widgetMap);
-    if (!matched) return null;
+    if (!currentWidgetMatch) return null;
     return /*#__PURE__*/React.createElement("a", {
       className: "App-locateBtn",
+      "aria-label": "Locate widget on page",
       onClick: function () {
         if (props.onLocateWidget) {
-          props.onLocateWidget(matched);
+          props.onLocateWidget(currentWidgetMatch);
         }
       }
     }, "\uD83D\uDCCD Locate on Page");
   })(), /*#__PURE__*/React.createElement("a", {
     className: "App-copyResultBtn",
+    "aria-label": "Copy JSON to clipboard",
     onClick: function () {
-      var json = JSON.stringify(currentQuery, null, 2);
-      navigator.clipboard.writeText(json).then(function () {
+      navigator.clipboard.writeText(currentQueryJson).then(function () {
         setCopyLabel('Copied!');
         setTimeout(function () { setCopyLabel('Copy JSON to Clipboard'); }, 1500);
-      });
+      }).catch(function (e) { console.warn('[NR1 Utils] Clipboard write failed:', e); });
     }
-  }, copyLabel))), findOwningTeam(currentQuery) && /*#__PURE__*/React.createElement("div", {
+  }, copyLabel))), owningTeam && /*#__PURE__*/React.createElement("div", {
     className: "App-owningTeamBanner"
   }, /*#__PURE__*/React.createElement("span", {
     className: "App-owningTeamLabel"
   }, "Owning Team:"), /*#__PURE__*/React.createElement("span", {
     className: "App-owningTeamValue"
-  }, findOwningTeam(currentQuery))),
+  }, owningTeam)),
   (function () {
-    var matched = currentQuery._matchedWidget || matchWidgetByNrql(currentQuery.query, widgetMap);
-    if (matched) {
+    if (currentWidgetMatch) {
       return /*#__PURE__*/React.createElement("div", {
         className: "App-widgetHintsBanner"
       }, /*#__PURE__*/React.createElement("span", {
         className: "App-widgetHintsLabel"
       }, "Dashboard Widget:"), /*#__PURE__*/React.createElement("span", {
         className: "App-widgetHintsItem"
-      }, /*#__PURE__*/React.createElement("strong", null, "Title: "), matched.title || '(untitled)'),
-      matched.pageName && /*#__PURE__*/React.createElement("span", {
+      }, /*#__PURE__*/React.createElement("strong", null, "Title: "), currentWidgetMatch.title || '(untitled)'),
+      currentWidgetMatch.pageName && /*#__PURE__*/React.createElement("span", {
         className: "App-widgetHintsItem"
-      }, /*#__PURE__*/React.createElement("strong", null, "Page: "), matched.pageName),
+      }, /*#__PURE__*/React.createElement("strong", null, "Page: "), currentWidgetMatch.pageName),
       /*#__PURE__*/React.createElement("span", {
         className: "App-widgetHintsItem"
-      }, /*#__PURE__*/React.createElement("strong", null, "Widget ID: "), matched.widgetId));
+      }, /*#__PURE__*/React.createElement("strong", null, "Widget ID: "), currentWidgetMatch.widgetId));
     }
     // Fallback: show component hint from call stack if available
     if (currentQuery.componentHint) {
@@ -386,7 +457,7 @@ const RequestsPage = props => {
     typeof currentQuery.errors === 'string' ? currentQuery.errors : JSON.stringify(currentQuery.errors))),
   /*#__PURE__*/React.createElement("pre", {
     className: "App-rawJson"
-  }, JSON.stringify(currentQuery, null, 2))));
+  }, currentQueryJson)));
 };
 
 export default RequestsPage;

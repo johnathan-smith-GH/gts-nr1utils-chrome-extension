@@ -2,13 +2,15 @@
   "manifest_version": 3,
   "name": "GTS NR1 Utils",
   "description": "GTS utilities for NR1",
-  "version": "1.8.15",
+  "version": "1.11.0",
+  "short_name": "NR1 Utils",
+  "author": "GTS Engineering",
+  "homepage_url": "https://github.com/johnathan-smith-gh/gts-nr1utils-chrome-extension",
   "permissions": [
-    "webNavigation",
     "tabs",
     "sidePanel",
     "scripting",
-    "cookies"
+    "storage"
   ],
   "host_permissions": [
     "https://*.newrelic.com/*"
@@ -20,11 +22,6 @@
     "default_path": "sidepanel.html"
   },
   "action": {
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    },
     "default_title": "GTS NR1 Utils"
   },
   "content_scripts": [
@@ -51,7 +48,7 @@
     }
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'"
+    "extension_pages": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; object-src 'self'"
   },
   "icons": {
     "16": "icons/icon16.png",

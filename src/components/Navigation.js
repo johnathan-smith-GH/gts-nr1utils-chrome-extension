@@ -8,19 +8,6 @@ const pageNameToLabel = {
   [PageName.NRQL_REQUESTS]: { file: 'nrql-requests', label: 'NRQL' },
 };
 
-const exportJson = (data, filename) => {
-  const json = JSON.stringify(data, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-};
-
 const getTimestamp = () => new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 
 const Navigation = props => {
@@ -30,10 +17,6 @@ const Navigation = props => {
     currentPage,
     preserveLog,
     handlePreserveLog,
-    showVerbose,
-    setShowVerbose,
-    showTiming,
-    setShowTiming,
     showOnlyErrors,
     setShowOnlyErrors,
     showOnlyTimeouts,
@@ -41,31 +24,57 @@ const Navigation = props => {
     logData,
     visibleLogData,
     allRequests,
-    selectedIndices,
+    selectedRequestIds,
     selectedCount
   } = props;
+
+  const handleTabKeyDown = (e, action) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      action();
+    }
+  };
 
   const currentInfo = pageNameToLabel[currentPage] || { file: 'requests', label: 'Results' };
 
   const handleExportClick = async () => {
     if (selectedCount === 0) return;
-    const selectedData = visibleLogData.filter((_, idx) => selectedIndices.includes(idx));
+    const selectedData = visibleLogData.filter(function (req) {
+      var rid = req.requestId || req._rid || '';
+      return selectedRequestIds.includes(rid);
+    });
     const json = JSON.stringify(selectedData, null, 2);
     const defaultName = `${currentInfo.file}-${getTimestamp()}.json`;
 
-    try {
-      const handle = await window.showSaveFilePicker({
-        suggestedName: defaultName,
-        types: [{
-          description: 'JSON File',
-          accept: { 'application/json': ['.json'] }
-        }]
-      });
-      const writable = await handle.createWritable();
-      await writable.write(json);
-      await writable.close();
-    } catch (e) {
-      // User cancelled the save dialog — ignore
+    if (window.showSaveFilePicker) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: defaultName,
+          types: [{
+            description: 'JSON File',
+            accept: { 'application/json': ['.json'] }
+          }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(json);
+        await writable.close();
+      } catch (e) {
+        // User cancelled the save dialog — ignore
+      }
+    } else {
+      try {
+        var blob = new Blob([json], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = defaultName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.warn('[NR1 Utils] Export fallback failed:', e);
+      }
     }
   };
 
@@ -77,39 +86,53 @@ const Navigation = props => {
     className: "App-navMain"
   }, /*#__PURE__*/React.createElement("a", {
     role: "button",
+    tabIndex: "0",
     className: currentPageClass(currentPage, PageName.GRAPHQL_REQUESTS),
-    onClick: () => setCurrentPage(PageName.GRAPHQL_REQUESTS)
+    onClick: () => setCurrentPage(PageName.GRAPHQL_REQUESTS),
+    onKeyDown: (e) => handleTabKeyDown(e, () => setCurrentPage(PageName.GRAPHQL_REQUESTS))
   }, "NerdGraph requests"), /*#__PURE__*/React.createElement("a", {
     role: "button",
+    tabIndex: "0",
     className: currentPageClass(currentPage, PageName.NRQL_REQUESTS),
-    onClick: () => setCurrentPage(PageName.NRQL_REQUESTS)
+    onClick: () => setCurrentPage(PageName.NRQL_REQUESTS),
+    onKeyDown: (e) => handleTabKeyDown(e, () => setCurrentPage(PageName.NRQL_REQUESTS))
   }, "NRQL requests"), /*#__PURE__*/React.createElement("a", {
     role: "button",
+    tabIndex: "0",
     className: currentPageClass(currentPage, PageName.DEBUG_INFO),
-    onClick: () => setCurrentPage(PageName.DEBUG_INFO)
+    onClick: () => setCurrentPage(PageName.DEBUG_INFO),
+    onKeyDown: (e) => handleTabKeyDown(e, () => setCurrentPage(PageName.DEBUG_INFO))
   }, "Debug Mode"), /*#__PURE__*/React.createElement("a", {
     role: "button",
+    tabIndex: "0",
     className: "App-guideBtn",
     onClick: function () { window.open(chrome.runtime.getURL('docs/guide.html'), '_blank'); },
+    onKeyDown: (e) => handleTabKeyDown(e, () => window.open(chrome.runtime.getURL('docs/guide.html'), '_blank')),
     title: "User's Guide"
   }, "User Guide")), isRequestPage && /*#__PURE__*/React.createElement("section", {
     className: "App-navSecondary"
   }, /*#__PURE__*/React.createElement("a", {
+    role: "button",
+    tabIndex: "0",
     className: "App-clearLog",
-    onClick: clearLog
+    onClick: clearLog,
+    onKeyDown: (e) => handleTabKeyDown(e, clearLog)
   }, "Clear log"), /*#__PURE__*/React.createElement("a", {
+    role: "button",
+    tabIndex: "0",
     className: `App-exportBtn ${selectedCount === 0 ? 'App-exportBtn--disabled' : ''}`,
     onClick: handleExportClick,
+    onKeyDown: (e) => handleTabKeyDown(e, handleExportClick),
     title: selectedCount === 0 ? 'Select at least one result to export' : ''
   }, "Export")), /*#__PURE__*/React.createElement("section", {
     className: "App-navControls"
-  }, isRequestPage && /*#__PURE__*/React.createElement("span", {
+  }, isRequestPage && /*#__PURE__*/React.createElement("label", {
     className: "App-checkBoxOption"
   }, /*#__PURE__*/React.createElement("input", {
     type: "checkbox",
     checked: showOnlyErrors,
     onChange: setShowOnlyErrors
-  }), "Errors only"), isRequestPage && /*#__PURE__*/React.createElement("span", {
+  }), "Errors only"), isRequestPage && /*#__PURE__*/React.createElement("label", {
     className: "App-checkBoxOption"
   }, /*#__PURE__*/React.createElement("input", {
     type: "checkbox",

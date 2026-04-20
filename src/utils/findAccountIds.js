@@ -8,7 +8,7 @@ function findAccountIds(obj) {
     }
     for (var key in o) {
       if (key === 'account_ids' && Array.isArray(o[key])) {
-        o[key].forEach(function (id) { if (id != null) ids.push(String(id)); });
+        o[key].forEach(function (id) { if (id !== null && id !== undefined) ids.push(String(id)); });
       }
       if (typeof o[key] === 'object') search(o[key]);
     }

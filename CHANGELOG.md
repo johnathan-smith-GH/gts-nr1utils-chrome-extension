@@ -1,5 +1,96 @@
 # Changelog
 
+## 1.11.0
+### New Features
+- Add distributed tracing API capture — requests to `distributed-tracing.service.newrelic.com` now appear in the NRQL tab with a TRACE badge
+- Split traceGroups API response into separate entries: Trace count, Trace duration (ms), and Trace groups for clear per-visualization tracking
+- Add Locate on Page support for DT visualizations — highlights the corresponding chart or table section on the Traces page
+- Add TRACE badge styling (orange) to distinguish DT entries from NRQL/GraphQL requests
+
+### Bug Fixes
+- Fix list selection showing wrong entry details — Log.js sorted requests by status/time but RequestsPage looked up by unsorted index, causing the detail pane and Locate on Page to reference a different entry than the one clicked
+- Fix Locate on Page failing to find "Trace groups" heading — `isInsideControl` helper matched "tab" as substring of "Table" in class names like `nr1_dt-TraceGroupsTableHeader`, causing the H4 element to be incorrectly skipped
+- Fix Locate on Page Strategy 0 (CardBase search) highlighting wrong container — now prefers CardBase elements that contain a heading (h1-h6) matching the title, falling back to textContent match for dashboard widgets
+
+### Code Quality
+- Move request sort from Log.js to RequestsPage.js so list display order and detail-pane lookup share the same sorted array
+
+## 1.10.0
+### New Features
+- Add `PANEL_READY` handshake — buffered requests and widget map now sent only after side panel listeners are attached, eliminating the port lifecycle race condition
+- Add `preserveLog` sync between UI and service worker — request buffer is now preserved across page navigations when "Preserve Log" is enabled
+- Add `widgetMap` persistence to `chrome.storage.session` — dashboard widget correlations survive service worker restarts
+- Add prototype pollution protection in `completeRequest` reducer via `safeAssign` helper
+- Add sender validation (`sender.id`) to content script's `chrome.runtime.onMessage` handler
+- Add message validation in service worker — rejects messages with missing or non-string `action` field
+- Add URL protocol check (`https:` only) to `UPDATE_URL` handler
+- Add debug cache staleness detection (5-minute TTL) — stale nerdpack metadata is automatically re-fetched
+- Add CSS custom property system (`--color-gold`, `--color-highlight`, `--color-info`) replacing 20+ hardcoded color values
+- Add `@supports` guard for CSS Custom Highlight API with graceful fallback
+- Add z-index hierarchy documentation in CSS
+- Add `aria-label` attributes to search input, copy button, and locate button
+- Add `.gitignore`, `LICENSE` (MIT), and `package.json` for project metadata
+
+### Bug Fixes
+- Fix request buffer cleared on navigation regardless of `preserveLog` setting
+- Fix debounced save losing request data on service worker unload — buffer now saves immediately
+- Fix `onMessage` handler registered inside async callback, dropping early messages — now registered at module level
+- Fix widget map deduplication using `widgetId` only — now uses `widgetId + pageName` to prevent cross-page collisions
+- Fix widget substring matching returning first match instead of best match — now scores by query length similarity
+- Fix `getLocation` listener accumulating in `messageListeners` — already cleaned up by `removeListener`
+- Fix `for...in` loop in `extractWidgetHints` iterating prototype chain — added `hasOwnProperty` guard
+- Fix `accountIds[0]` accessed without length check in `buildNrqlFromSignals`
+- Fix reconnection race in port connection — added `connecting` flag to prevent duplicate attempts
+- Fix content script broad DOM selector — strategies 1-3 now use heading+span subset before falling back to full query
+- Fix navigation poll interval not cleared on `pagehide` in `subscribeToNavigation`
+
+### Code Quality
+- Replace all empty `.catch()` and `catch (e) {}` blocks with `console.warn` logging across all script files
+- Replace `console.log` with `console.debug` for non-error messages in page-script.js
+- Replace `indexOf` with `includes` for substring/membership checks across multiple files
+- Replace loose equality (`!=`) with strict equality in `extractNrqlFromGraphql.js`
+- Remove all `!important` declarations from CSS (16 instances)
+- Remove dead `chromeApi.clearLog()` method from index.js
+- Remove duplicate icon block from manifest.json `action` section
+- Add `short_name`, `author`, and `homepage_url` to manifest.json
+- Expand CSP with explicit `default-src`, `style-src`, and `img-src` directives
+- Tighten component hint regex — removed overly generic patterns (Table, Line, Bar, Pie, Area, Markdown)
+- Add safe integer modulo to request counter preventing theoretical overflow
+- Fix release workflow to use `python3` instead of `jq` for version extraction
+- Fix CHANGELOG inaccuracy about `ResponseDataSection`
+- Update README file structure to include all source files
+- Add try/catch to export fallback path in Navigation.js
+- Rename CSS variable `--color-accent` to `--color-gold` for clarity (distinct from `--accent-color`)
+- Wrap export fallback in try/catch in Navigation.js
+
+## 1.9.0
+- Remove unused `webNavigation` and `cookies` permissions from manifest (least privilege)
+- Add sender validation (`sender.id`) to `chrome.runtime.onMessage` handler in background.js
+- Fix relative URL handling in App.js — requests with relative paths (e.g., `/graphql`) are now captured
+- Fix stale closures in App.js `useEffect` — process functions and props now accessed via refs
+- Add `console.warn` to catch blocks in App.js so processing errors are no longer silently swallowed
+- Fix `Date.now` vs `Date.now()` in Log.js — eliminates `NaNms` flash on first render of pending requests
+- Extract all NRQL strings from GraphQL variables (not just the first) in extractNrqlFromGraphql.js
+- Also check variable values for NRQL when query text doesn't contain "nrql"
+- Fix `completeRequest` to search both GQL and NRQL arrays when completing a request by requestId
+- Distinguish extension-side JSON parse errors from real API errors in buildNrqlRequests.js
+- Fix `buildGraphqlRequests.js` dataset type check — already-parsed objects no longer double-parsed
+- Fix `parseNrqlListing.js` regex to handle NRQL ending with table name (no trailing character)
+- Add `subscription` keyword support to `formatGraphql.js`
+- Add keyboard accessibility (tabIndex, Enter/Space) to all navigation links
+- Wrap filter checkboxes in `<label>` elements for proper click association
+- Add null guard on `visibleRequests[currentQueryIdx]` in RequestsPage.js
+- Add `.catch()` to clipboard `writeText` call in RequestsPage.js
+- Add `.catch()` to fetch wrapper in page-script.js so failed fetches appear in the log
+- Remove ~280 lines of dead `highlightWidgetOnPage` code from page-script.js
+- Remove dead `history.pushState/replaceState` patches from content.js
+- Remove dead `URL_PARAMETERS` page, `getParamString.js`, and related state/reducers
+- Remove unused `ResponseDataSection` import and unused props from RequestsPage.js
+- Remove `overallEndTime` dead prop from LogEntry.js
+- Extract `bork-sniffer` hostname to `SIGNAL_EVAL_HOST` constant
+- Clean up HTML titles (remove `[DEV]`) and Snowpack boilerplate from index.html
+- Remove unused `ResponseDataSection` reference from README file structure
+
 ## 1.8.15
 - Fix `parseTextStream.js` initial accumulator: change from `0` to `null` to prevent spurious data association when a `data:` line appears before any `id:` line
 

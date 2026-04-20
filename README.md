@@ -4,11 +4,12 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 
 Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 Debug Mode panel, and information scattered across the New Relic UI into a single side panel.
 
-**Version:** 1.8.15
+**Version:** 1.11.0
 
 ## Features
 
 - NerdGraph and NRQL request capture with live status monitoring
+- Distributed tracing API capture with TRACE badge and Locate on Page
 - Dashboard widget correlation with Locate on Page highlighting
 - Error, timeout, and multi-account detection
 - Owning team identification and source component tracing
@@ -17,6 +18,8 @@ Consolidates troubleshooting workflows that typically require juggling browser d
 
 For full feature documentation, see the **[User Guide](https://johnathan-smith-gh.github.io/gts-nr1utils-chrome-extension/docs/guide.html)**.
 For implementation details, see **[Under The Hood](https://johnathan-smith-gh.github.io/gts-nr1utils-chrome-extension/docs/under-the-hood.html)**.
+
+Both guides are also available locally in the `docs/` folder.
 
 ## Installation
 
@@ -54,20 +57,38 @@ For full implementation details, see **[Under The Hood](https://johnathan-smith-
 
 ```
 ├── manifest.json                # Manifest V3 configuration
+├── package.json                 # Project metadata
 ├── sidepanel.html / index.html  # UI entry points
 ├── scripts/                     # Extension pipeline scripts
-│   ├── background.js            # Service worker (message routing, request buffering, fallback tab routing)
-│   ├── content.js               # Content script (message bridge, SPA detection, widget highlight)
+│   ├── background.js            # Service worker (message routing, request buffering)
+│   ├── content.js               # Content script (message bridge, widget highlight)
 │   ├── page-script.js           # Page script (debug/platform info collection)
-│   └── early-wrap.js            # Early fetch/XHR interception (document_start), call stack capture
+│   └── early-wrap.js            # Early fetch/XHR interception (document_start)
 ├── src/                         # React UI source
-│   ├── App.js                   # Main React component, request processing, widget map extraction
-│   ├── components/              # UI components (Navigation, Log, LogEntry, RequestsPage, DebugInfoPage)
+│   ├── index.js                 # Entry point, port connection, error boundary
+│   ├── App.js                   # Main component, request processing, widget map
+│   ├── App.css                  # All styling (dark mode, status badges, layout)
+│   ├── types.js                 # PageName and LogRequestType enums
 │   ├── state/                   # Redux store, slice, and action creators
-│   └── utils/                   # GraphQL/NRQL parsing, widget hint extraction, helper utilities
-├── docs/                        # Documentation
+│   │   ├── store.js
+│   │   ├── rootSlice.js
+│   │   └── actionCreators.js
+│   ├── components/              # UI components
+│   │   ├── Navigation.js        # Tabs, filters, export
+│   │   ├── Log.js               # Virtualized request list
+│   │   ├── LogEntry.js          # Individual request row
+│   │   ├── RequestsPage.js      # Request detail panel
+│   │   └── DebugInfoPage.js     # Debug mode display
+│   └── utils/                   # Parsing and matching utilities
+│       ├── findAccountIds.js
+│       ├── matchWidgetByNrql.js
+│       ├── statusPriority.js
+│       ├── graphql/             # GraphQL request parsing
+│       ├── nrql/                # NRQL request parsing
+│       └── dt/                  # Distributed tracing request parsing
+├── docs/                        # Documentation (HTML)
 │   ├── guide.html               # User guide
-│   └── under-the-hood.html      # Technical architecture documentation
+│   └── under-the-hood.html      # Technical architecture
 ├── icons/                       # Extension icons (16, 48, 128px)
 └── snowpack/                    # Snowpack-bundled dependencies
 ```

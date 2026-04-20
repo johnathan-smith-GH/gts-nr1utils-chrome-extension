@@ -1,3 +1,17 @@
+/* ============================================================
+   Color palette — z-index hierarchy documented in Issue #37 block
+   ============================================================ */
+:root {
+  --color-gold: #d4a017;
+  --color-error: #e00;
+  --color-success: #2B8C0E;
+  --color-info: #1a7f8a;
+  --color-highlight: #7c3aed;
+  --color-text-muted: #888;
+  --color-border: #ddd;
+  --color-bg-dark: #1e1e1e;
+}
+
 * {
   padding: 0;
   margin: 0;
@@ -27,6 +41,14 @@ body {
 
   color: #333;
 }
+
+/* ============================================================
+   z-index hierarchy:
+   1  — .App-resultToolbar (sticky toolbar in detail pane)
+   2  — .App-nav (sticky navigation bar)
+   200 — .App-confirmOverlay (modal overlay)
+   999999 — widget highlight overlay (in content.js, not CSS)
+   ============================================================ */
 
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
@@ -99,9 +121,9 @@ body {
   font-size: 11px;
   font-weight: 600;
   padding: 6px 12px;
-  background-color: #d4a017;
-  border: 1.5px solid #d4a017 !important;
-  color: #FFF !important;
+  background-color: var(--color-gold);
+  border: 1.5px solid var(--color-gold);
+  color: #FFF;
   cursor: pointer;
   transition: background-color 150ms ease, border-color 150ms ease;
 }
@@ -112,8 +134,8 @@ body {
 
 @media (prefers-color-scheme: dark) {
   .App-guideBtn {
-    background-color: #d4a017;
-    color: #FFF !important;
+    background-color: var(--color-gold);
+    color: #FFF;
   }
 }
 
@@ -138,7 +160,7 @@ body {
 }
 
 .App-clearLog {
-  color: #FFF !important;
+  color: #FFF;
   background-color: #c0392b;
   border-radius: 4px;
   padding: 3px 10px;
@@ -154,8 +176,8 @@ body {
 }
 
 .App-exportBtn {
-  color: #FFF !important;
-  background-color: #1a7f8a;
+  color: #FFF;
+  background-color: var(--color-info);
   border-radius: 4px;
   padding: 3px 10px;
   font-size: 11px;
@@ -170,15 +192,15 @@ body {
 }
 
 .App-nav--currentLink {
-  background-color: var(--accent-color) !important;
-  border-color: var(--accent-color) !important;
-  color: #FFF !important;
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #FFF;
 }
 
 @media (prefers-color-scheme: dark) {
   .App-nav--currentLink {
-    background-color: #3A6B55 !important;
-    border-color: #3A6B55 !important;
+    background-color: #3A6B55;
+    border-color: #3A6B55;
   }
 }
 
@@ -188,6 +210,10 @@ body {
   font-family: Menlo, monospace;
   white-space: pre;
   line-height: 1.5;
+}
+
+.App-page {
+  min-height: 0;
 }
 
 .App-graphQL {
@@ -210,11 +236,35 @@ body {
 
 .App-log li {
   list-style: none;
-  padding: 10px 20px;
+}
+
+.App-log li.App-log-item {
+  padding: 8px 12px 8px 32px;
   cursor: pointer;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  position: relative;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.App-logEntryContent {
+  overflow: hidden;
+}
+
+.App-logEntryRow1,
+.App-logEntryRow2 {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  line-height: 20px;
+}
+
+.App-logEntryRow2 {
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+.App-logEntryRow1 > *,
+.App-logEntryRow2 > * {
+  vertical-align: middle;
 }
 
 .App-log li:last-child {
@@ -231,7 +281,13 @@ body {
 }
 
 .App-log-item--selected {
-  background-color: var(--accent-color-semitransparent);
+  background-color: #d0dfda;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-log-item--selected {
+    background-color: #2f3d36;
+  }
 }
 
 .App-log-item--selected .App-requestName {
@@ -259,6 +315,19 @@ body {
 .App-logSelected {
   flex-grow: 2;
   overflow: auto;
+}
+
+.App-logSelectedQuery {
+  overflow-y: auto;
+}
+
+.App-codeBreak code {
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.App-codePre {
+  overflow-x: auto;
 }
 
 .App-logSelectedItem {
@@ -294,15 +363,15 @@ body {
 }
 
 .App-requestType--pending {
-  background-color: #d4a017;
-  border-color: #d4a017;
+  background-color: var(--color-gold);
+  border-color: var(--color-gold);
 }
 
 @media (prefers-color-scheme: dark) {
   .App-requestType--pending {
     background-color: transparent;
-    border: 1px solid #d4a017;
-    color: #d4a017;
+    border: 1px solid var(--color-gold);
+    color: var(--color-gold);
   }
 }
 
@@ -316,6 +385,19 @@ body {
     background-color: transparent;
     border: 1px solid #777;
     color: #777;
+  }
+}
+
+.App-requestType--trace {
+  background-color: #e67e22;
+  border-color: #e67e22;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-requestType--trace {
+    background-color: transparent;
+    border: 1px solid #e67e22;
+    color: #e67e22;
   }
 }
 
@@ -406,7 +488,7 @@ body {
 }
 
 .copy-icon svg {
-  font-size: 12px !important;
+  font-size: 12px;
 }
 
 .App-flexBreak {
@@ -448,21 +530,21 @@ body {
 }
 
 .App-requestTimingLabel--pending {
-  background-color: #d4a017;
-  border-color: #d4a017;
+  background-color: var(--color-gold);
+  border-color: var(--color-gold);
   animation: pendingPulse 1.5s ease-in-out infinite;
 }
 
 @media (prefers-color-scheme: dark) {
   .App-requestTimingLabel--pending {
     background-color: transparent;
-    border: 1px solid #d4a017;
-    color: #d4a017;
+    border: 1px solid var(--color-gold);
+    color: var(--color-gold);
   }
 }
 
 .App-requestTimingValue--pending {
-  color: #d4a017;
+  color: var(--color-gold);
 }
 
 @keyframes pendingPulse {
@@ -485,7 +567,6 @@ body {
 
 .App-requestTimingValue {
   font-size: 12px;
-  margin-top: 4px;
   margin-left: 8px;
 }
 
@@ -582,14 +663,16 @@ body {
   color: var(--accent-color);
 }
 
-::highlight(search-results) {
-  background-color: rgba(255, 255, 0, 0.5);
-  color: #000;
-}
+@supports (selector(::highlight(search-results))) {
+  ::highlight(search-results) {
+    background-color: rgba(255, 255, 0, 0.5);
+    color: #000;
+  }
 
-::highlight(search-current) {
-  background-color: #f57c00;
-  color: #FFF;
+  ::highlight(search-current) {
+    background-color: #f57c00;
+    color: #FFF;
+  }
 }
 
 /* ============================================================
@@ -597,9 +680,11 @@ body {
    ============================================================ */
 
 .App-log-checkbox {
-  margin-right: 8px;
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
   cursor: pointer;
-  flex-shrink: 0;
 }
 
 .App-selectAll {
@@ -736,8 +821,8 @@ body {
 }
 
 .App-locateBtn {
-  color: #FFF !important;
-  background-color: #7c3aed;
+  color: #FFF;
+  background-color: var(--color-highlight);
   border-radius: 4px;
   padding: 4px 12px;
   font-size: 11px;
@@ -754,8 +839,8 @@ body {
 }
 
 .App-copyResultBtn {
-  color: #FFF !important;
-  background-color: #1a7f8a;
+  color: #FFF;
+  background-color: var(--color-info);
   border-radius: 4px;
   padding: 4px 12px;
   font-size: 11px;
@@ -861,7 +946,7 @@ body {
   gap: 6px 12px;
   padding: 10px 20px;
   background-color: #f5f0ff;
-  border-left: 4px solid #7c3aed;
+  border-left: 4px solid var(--color-highlight);
   border-bottom: 1px solid var(--border-color);
 }
 
@@ -899,7 +984,7 @@ body {
 }
 
 .App-widgetHintsItem strong {
-  color: #7c3aed;
+  color: var(--color-highlight);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -965,7 +1050,7 @@ body {
   padding: 8px 18px;
   border-bottom: 1px solid var(--border-color);
   background-color: rgba(212, 160, 23, 0.08);
-  border-left: 4px solid #d4a017;
+  border-left: 4px solid var(--color-gold);
   font-size: 11px;
 }
 
@@ -988,8 +1073,8 @@ body {
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  background-color: #1a7f8a;
-  color: #FFF !important;
+  background-color: var(--color-info);
+  color: #FFF;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   transition: background-color 150ms ease;
@@ -1000,7 +1085,7 @@ body {
 }
 
 .App-multiAccountBtn--active {
-  background-color: #d4a017;
+  background-color: var(--color-gold);
 }
 
 .App-multiAccountBtn--active:hover {
@@ -1073,7 +1158,7 @@ body {
 }
 
 .App-confirmBtn--no {
-  color: #FFF !important;
+  color: #FFF;
   background-color: #999;
 }
 
@@ -1082,8 +1167,8 @@ body {
 }
 
 .App-confirmBtn--yes {
-  color: #FFF !important;
-  background-color: #1a7f8a;
+  color: #FFF;
+  background-color: var(--color-info);
 }
 
 .App-confirmBtn--yes:hover {

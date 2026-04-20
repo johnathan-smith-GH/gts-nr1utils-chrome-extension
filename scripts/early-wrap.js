@@ -13,7 +13,8 @@
 
   var requestCounter = 0;
   function genRequestId() {
-    return 'nr1-' + (++requestCounter) + '-' + Date.now();
+    requestCounter = (requestCounter + 1) % 9007199254740991;
+    return 'nr1-' + requestCounter + '-' + Date.now();
   }
 
   /**
@@ -24,7 +25,7 @@
     try {
       var stack = new Error().stack || '';
       var lines = stack.split('\n');
-      var componentPatterns = /Widget|Chart|Billboard|Table|Line|Bar|Pie|Nrql|Dashboard|Visualization|Area|Funnel|Heatmap|Histogram|Markdown|Scatter|Stacked/i;
+      var componentPatterns = /Widget|Chart|Billboard|NrqlQuery|Dashboard|Visualization|Funnel|Heatmap|Histogram|Scatter|Stacked/i;
       var skipPatterns = /scripts\/early-wrap\.js|scripts\/page-script\.js|scripts\/content\.js/;
       var componentHint = null;
       var meaningful = [];
@@ -112,17 +113,19 @@
         componentHint: stackInfo ? stackInfo.componentHint : null,
         stackSummary: stackInfo ? stackInfo.stackSummary : null
       });
-    }).catch(function () {});
+    }).catch(function (e) { console.warn('[NR1 Utils early-wrap]', e); });
 
     var fetchPromise = originalFetch.apply(this, arguments);
+
+    var MAX_BODY_SIZE = 5 * 1024 * 1024; // 5MB cap on captured response bodies
 
     // Phase 2: Send completion when response arrives
     fetchPromise.then(function (response) {
       var totalTime = performance.now() - startTime;
       var clone = response.clone();
       var textWithTimeout = Promise.race([
-        clone.text().catch(function () { return ''; }),
-        new Promise(function (resolve) { setTimeout(function () { resolve(''); }, 5000); })
+        clone.text().then(function (t) { return t.length > MAX_BODY_SIZE ? '[Response too large (>5MB)]' : t; }).catch(function () { return ''; }),
+        new Promise(function (resolve) { setTimeout(function () { resolve('[Timeout reading response]'); }, 5000); })
       ]);
       Promise.all([requestBodyPromise, textWithTimeout]).then(function (results) {
         try {
@@ -133,9 +136,10 @@
             responseBody: results[1],
             timing: { startTime: absStartTime, totalTime: totalTime, blockedTime: 0 }
           });
-        } catch (e) {}
-      }).catch(function () {});
-    }).catch(function () {
+        } catch (e) { console.warn('[NR1 Utils early-wrap] sendRequestComplete error:', e); }
+      }).catch(function (e) { console.warn('[NR1 Utils early-wrap]', e); });
+    }).catch(function (fetchErr) {
+      console.warn('[NR1 Utils early-wrap] fetch failed:', fetchErr);
       var totalTime = performance.now() - startTime;
       requestBodyPromise.then(function (reqBody) {
         try {
@@ -146,8 +150,8 @@
             responseBody: '',
             timing: { startTime: absStartTime, totalTime: totalTime, blockedTime: 0 }
           });
-        } catch (e) {}
-      }).catch(function () {});
+        } catch (e) { console.warn('[NR1 Utils early-wrap] sendRequestComplete error:', e); }
+      }).catch(function (e) { console.warn('[NR1 Utils early-wrap]', e); });
     });
 
     return fetchPromise;
@@ -185,7 +189,7 @@
           componentHint: xhrStackInfo ? xhrStackInfo.componentHint : null,
           stackSummary: xhrStackInfo ? xhrStackInfo.stackSummary : null
         });
-      }).catch(function () {});
+      }).catch(function (e) { console.warn('[NR1 Utils early-wrap]', e); });
 
       // Phase 2: Send completion on load, error, or abort
       function handleXhrDone(responseBody) {
@@ -199,8 +203,8 @@
               responseBody: responseBody,
               timing: { startTime: absStartTime, totalTime: totalTime, blockedTime: 0 }
             });
-          } catch (e) {}
-        }).catch(function () {});
+          } catch (e) { console.warn('[NR1 Utils early-wrap] sendRequestComplete error:', e); }
+        }).catch(function (e) { console.warn('[NR1 Utils early-wrap]', e); });
       }
 
       xhr.addEventListener('load', function () {

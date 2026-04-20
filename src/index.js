@@ -14,24 +14,68 @@ import './index.css.proxy.js';
 // ============================================================
 var port = null;
 var messageListeners = [];
+var outboundQueue = [];
+var reconnecting = false;
+var connecting = false;
+var reconnectAttempts = 0;
+var MAX_QUEUE_SIZE = 200;
+var MAX_RECONNECT_ATTEMPTS = 10;
 
 function connectPort() {
+  if (connecting) return;
+  connecting = true;
+  reconnecting = false;
+  reconnectAttempts = 0;
   port = chrome.runtime.connect({ name: 'nr1-utils-panel' });
+  connecting = false;
 
   // Re-attach any existing listeners to the new port
   messageListeners.forEach(function (fn) {
-    port.onMessage.addListener(fn);
+    try { port.onMessage.addListener(fn); } catch (e) {}
   });
 
+  // Flush any messages queued during reconnection
+  if (outboundQueue.length > 0) {
+    var queued = outboundQueue.slice();
+    outboundQueue = [];
+    queued.forEach(function (msg) {
+      try { port.postMessage(msg); } catch (e) {}
+    });
+  }
+
   port.onDisconnect.addListener(function () {
-    // Service worker went away — reconnect after a short delay
+    reconnecting = true;
+    reconnectAttempts++;
+    if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+      // Give up — extension context is likely invalidated
+      console.warn('[NR1 Utils] Max reconnect attempts reached. Dropping', outboundQueue.length, 'queued messages.');
+      outboundQueue = [];
+      reconnecting = false;
+      return;
+    }
+    // Exponential backoff: 500ms, 1s, 2s, 4s...
+    var delay = Math.min(500 * Math.pow(2, reconnectAttempts - 1), 30000);
     setTimeout(function () {
       try {
         connectPort();
       } catch (e) {
-        // Extension context invalidated
+        // Extension context invalidated — retry if under limit
+        reconnecting = false;
+        connecting = false;
+        if (reconnectAttempts <= MAX_RECONNECT_ATTEMPTS) {
+          var retryDelay = Math.min(500 * Math.pow(2, reconnectAttempts - 1), 30000);
+          setTimeout(function () {
+            try { connectPort(); } catch (e2) {
+              reconnecting = false;
+              connecting = false;
+              outboundQueue = [];
+            }
+          }, retryDelay);
+        } else {
+          outboundQueue = [];
+        }
       }
-    }, 500);
+    }, delay);
   });
 }
 
@@ -43,15 +87,22 @@ connectPort();
 const chromeApi = {
   port: {
     postMessage: function (msg) {
+      if (reconnecting) {
+        if (outboundQueue.length < MAX_QUEUE_SIZE) outboundQueue.push(msg);
+        return;
+      }
       try {
         port.postMessage(msg);
       } catch (e) {
-        // Port disconnected, will reconnect automatically
+        // Port disconnected — queue for after reconnect
+        if (outboundQueue.length < MAX_QUEUE_SIZE) outboundQueue.push(msg);
       }
     },
     onMessage: {
       addListener: function (fn) {
-        messageListeners.push(fn);
+        if (!messageListeners.includes(fn)) {
+          messageListeners.push(fn);
+        }
         try { port.onMessage.addListener(fn); } catch (e) {}
       },
       removeListener: function (fn) {
@@ -77,9 +128,6 @@ const chromeApi = {
   },
   updateUrl: function (url) {
     chromeApi.port.postMessage({ action: 'UPDATE_URL', url: url });
-  },
-  clearLog: function () {
-    chromeApi.port.postMessage({ action: 'CLEAR_LOG' });
   }
 };
 

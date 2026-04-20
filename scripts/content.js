@@ -43,7 +43,8 @@
   // Listen for messages from the page script
   // ============================================================
   window.addEventListener('message', function (event) {
-    if (event.source !== window || !event.data || !event.data.type) return;
+    if (event.source !== window || event.origin !== window.location.origin) return;
+    if (!event.data || !event.data.type) return;
 
     if (event.data.type === 'NR1_UTILS_REQUEST') {
       // Forward intercepted request to service worker (legacy single-phase)
@@ -128,37 +129,46 @@
   window.addEventListener('popstate', sendUrlChange);
   window.addEventListener('hashchange', sendUrlChange);
 
-  // Also detect pushState/replaceState (NR1 uses these for SPA navigation)
-  var originalPushState = history.pushState;
-  var originalReplaceState = history.replaceState;
-
-  history.pushState = function () {
-    var result = originalPushState.apply(this, arguments);
-    sendUrlChange();
-    return result;
-  };
-
-  history.replaceState = function () {
-    var result = originalReplaceState.apply(this, arguments);
-    sendUrlChange();
-    return result;
-  };
 
   // ============================================================
   // Widget highlight: find and highlight a widget on the page
   // Runs in content script (same DOM access as page script)
   // ============================================================
-  function highlightWidgetOnPage(widgetTitle, widgetId) {
+  var _isHighlighting = false;
+  var _listenersRegistered = false;
+  var _highlightDebounce = null;
+
+  function highlightWidgetOnPage(widgetTitle, widgetId, pageName) {
+    // Cancel any in-progress highlight and start fresh
+    _isHighlighting = true;
     var LOG = '[NR1 Utils Locate]';
 
     var existing = document.getElementById('nr1-utils-widget-highlight');
     if (existing) existing.remove();
 
-    console.log(LOG, 'Looking for widget:', { title: widgetTitle, id: widgetId });
+    console.log(LOG, 'Looking for widget:', { title: widgetTitle, id: widgetId, page: pageName });
 
     if (!widgetTitle) {
       console.warn(LOG, 'No widget title provided');
+      _isHighlighting = false;
       return;
+    }
+
+    // If pageName is provided, switch to the correct dashboard page tab first
+    if (pageName) {
+      var pnLower = pageName.toLowerCase().trim();
+      var tabs = document.querySelectorAll('[role="tab"]');
+      for (var ti = 0; ti < tabs.length; ti++) {
+        var tabText = (tabs[ti].textContent || '').trim().toLowerCase();
+        if (tabText === pnLower && tabs[ti].getAttribute('aria-selected') !== 'true') {
+          console.log(LOG, 'Switching to dashboard page tab:', pageName);
+          tabs[ti].click();
+          // Re-run after page renders (omit pageName to avoid infinite loop)
+          _isHighlighting = false;
+          setTimeout(function () { highlightWidgetOnPage(widgetTitle, widgetId); }, 600);
+          return;
+        }
+      }
     }
 
     var titleLower = widgetTitle.toLowerCase().trim();
@@ -166,33 +176,110 @@
     function findTitleInDom() {
       var targetElement = null;
       var strategyUsed = '';
-      var allElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, span, div, p, a');
+      var headingElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, span');
+      var allElements = null; // lazy-init for broader search
+      function getAllElements() { if (!allElements) allElements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, span, div, p, a'); return allElements; }
 
-      // Strategy 1: Exact leaf-node textContent match
-      for (var i = 0; i < allElements.length; i++) {
-        var el = allElements[i];
+      // Strategy 0: Find the smallest NR1 card/section that has a heading
+      // (h1-h6) matching the title.  Requiring a heading avoids false positives
+      // like a CardBase that merely contains the title text inside a button or tab.
+      // Falls back to a textContent-only check for dashboard widgets that may
+      // not use headings.
+      var cards = document.querySelectorAll('[class*="CardBase"], [class*="card-base"], section, article');
+      var bestCardHeading = null;
+      var bestCardHeadingArea = Infinity;
+      var bestCardText = null;
+      var bestCardTextArea = Infinity;
+      for (var ci = 0; ci < cards.length; ci++) {
+        var card = cards[ci];
+        var cardRect = card.getBoundingClientRect();
+        if (cardRect.width < 100 || cardRect.height < 60) continue;
+        if (cardRect.width > window.innerWidth * 0.6) continue;
+        var cardText = card.textContent.toLowerCase();
+        if (cardText.indexOf(titleLower) === -1) continue;
+        var area = cardRect.width * cardRect.height;
+        // Check if a heading inside the card matches the title
+        var headings = card.querySelectorAll('h1,h2,h3,h4,h5,h6');
+        var hasHeading = false;
+        for (var hi = 0; hi < headings.length; hi++) {
+          if (headings[hi].textContent.trim().toLowerCase() === titleLower) {
+            hasHeading = true;
+            break;
+          }
+        }
+        if (hasHeading && area < bestCardHeadingArea) {
+          bestCardHeadingArea = area;
+          bestCardHeading = card;
+        } else if (!hasHeading && area < bestCardTextArea) {
+          bestCardTextArea = area;
+          bestCardText = card;
+        }
+      }
+      if (bestCardHeading) {
+        return { el: bestCardHeading, strategy: '0: card with heading title', _isContainer: true };
+      }
+      if (bestCardText) {
+        return { el: bestCardText, strategy: '0: card containing title text', _isContainer: true };
+      }
+
+      // Helper: skip elements inside buttons, tabs, or navigation controls
+      function isInsideControl(el) {
+        var p = el.parentElement;
+        for (var ci = 0; ci < 5 && p; ci++) {
+          if (p.tagName === 'BUTTON' || p.tagName === 'NAV') return true;
+          var cls = (p.className || '').toLowerCase();
+          if (cls.indexOf('segmentedcontrol') !== -1 || cls.indexOf('tablist') !== -1 || cls.indexOf('tab-') !== -1 || cls.indexOf('-tabs') !== -1) return true;
+          if (p.getAttribute && (p.getAttribute('role') === 'tab' || p.getAttribute('role') === 'tablist')) return true;
+          p = p.parentElement;
+        }
+        return false;
+      }
+
+      // Strategy 1: Exact leaf-node textContent match (skip nav/button elements)
+      for (var i = 0; i < headingElements.length; i++) {
+        var el = headingElements[i];
         var text = (el.textContent || '').trim().toLowerCase();
-        if (text === titleLower && el.children.length === 0) {
+        if (text === titleLower && el.children.length === 0 && !isInsideControl(el)) {
           return { el: el, strategy: '1: exact leaf-node textContent' };
         }
       }
 
       // Strategy 2: innerText match on small elements
-      for (var j = 0; j < allElements.length; j++) {
-        var el2 = allElements[j];
+      for (var j = 0; j < headingElements.length; j++) {
+        var el2 = headingElements[j];
         var innerText = (el2.innerText || '').trim().toLowerCase();
-        if (innerText === titleLower && el2.offsetHeight < 100) {
+        if (innerText === titleLower && el2.offsetHeight < 100 && !isInsideControl(el2)) {
           return { el: el2, strategy: '2: exact innerText on small element' };
         }
       }
 
       // Strategy 3: textContent match allowing child elements (size-bounded)
-      for (var k = 0; k < allElements.length; k++) {
-        var el3 = allElements[k];
+      // Search all element types (NR1 uses divs for chart titles on non-dashboard pages)
+      for (var k = 0; k < getAllElements().length; k++) {
+        var el3 = getAllElements()[k];
         var text3 = (el3.textContent || '').trim().toLowerCase();
-        if (text3 === titleLower && el3.offsetHeight < 60 && el3.offsetWidth < 600) {
+        if (text3 === titleLower && el3.offsetHeight < 60 && el3.offsetWidth < 600 && !isInsideControl(el3)) {
           return { el: el3, strategy: '3: exact textContent with children (size-bounded)' };
         }
+      }
+
+      // Strategy 3b: textContent starts with title, small element (handles titles with info icons)
+      var best3b = null;
+      var best3bLen = Infinity;
+      for (var kb = 0; kb < getAllElements().length; kb++) {
+        var el3b = getAllElements()[kb];
+        var text3b = (el3b.textContent || '').trim().toLowerCase();
+        if (text3b.indexOf(titleLower) === 0 && text3b.length < titleLower.length + 10
+            && el3b.offsetHeight < 50 && el3b.offsetHeight > 0
+            && el3b.offsetWidth < 400 && el3b.offsetWidth > 0
+            && text3b.length < best3bLen
+            && !isInsideControl(el3b)) {
+          best3b = el3b;
+          best3bLen = text3b.length;
+        }
+      }
+      if (best3b) {
+        return { el: best3b, strategy: '3b: textContent startsWith on small element' };
       }
 
       // Strategy 4: title attribute match
@@ -204,22 +291,22 @@
         }
       }
 
-      // Strategy 5: aria-label match
+      // Strategy 5: aria-label match (skip nav/button controls)
       var ariaLabeled = document.querySelectorAll('[aria-label]');
       for (var a = 0; a < ariaLabeled.length; a++) {
         var ariaLabel = (ariaLabeled[a].getAttribute('aria-label') || '').trim().toLowerCase();
-        if (ariaLabel === titleLower) {
+        if (ariaLabel === titleLower && !isInsideControl(ariaLabeled[a]) && ariaLabeled[a].tagName !== 'BUTTON') {
           return { el: ariaLabeled[a], strategy: '5: aria-label' };
         }
       }
 
-      // Strategy 6: startsWith match on innerText
+      // Strategy 6: startsWith match on innerText (skip nav/button controls)
       var bestCandidate = null;
       var bestLen = Infinity;
-      for (var s = 0; s < allElements.length; s++) {
-        var el6 = allElements[s];
+      for (var s = 0; s < getAllElements().length; s++) {
+        var el6 = getAllElements()[s];
         var inner6 = (el6.innerText || '').trim().toLowerCase();
-        if (inner6.length > 0 && inner6.length < 200 && el6.offsetHeight < 60) {
+        if (inner6.length > 0 && inner6.length < 200 && el6.offsetHeight < 60 && !isInsideControl(el6)) {
           if (inner6.indexOf(titleLower) === 0 && inner6.length < bestLen) {
             bestCandidate = el6;
             bestLen = inner6.length;
@@ -230,11 +317,11 @@
         return { el: bestCandidate, strategy: '6: startsWith innerText' };
       }
 
-      // Strategy 7: TreeWalker text node
+      // Strategy 7: TreeWalker text node (skip nav/button controls)
       var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       while (walker.nextNode()) {
         var node = walker.currentNode;
-        if (node.textContent.trim().toLowerCase() === titleLower) {
+        if (node.textContent.trim().toLowerCase() === titleLower && node.parentElement && !isInsideControl(node.parentElement)) {
           return { el: node.parentElement, strategy: '7: TreeWalker text node' };
         }
       }
@@ -242,18 +329,27 @@
       return null;
     }
 
-    function showHighlight(targetElement) {
-      // Walk up to find the widget container
-      var container = targetElement;
-      var maxWalk = 15;
-      while (container.parentElement && maxWalk-- > 0) {
-        var parent = container.parentElement;
-        var rect = parent.getBoundingClientRect();
-        if (rect.width >= 200 && rect.height >= 100 && rect.width < window.innerWidth * 0.9) {
+    function showHighlight(targetElement, isAlreadyContainer) {
+      var container;
+      if (isAlreadyContainer) {
+        // Strategy 0 found the container directly — no walk-up needed
+        container = targetElement;
+      } else {
+        // Walk up to find the widget container
+        container = targetElement;
+        var maxWalk = 15;
+        var bestContainer = null;
+        while (container.parentElement && maxWalk-- > 0) {
+          var parent = container.parentElement;
+          var rect = parent.getBoundingClientRect();
+          if (rect.width > window.innerWidth * 0.7) break;
+          if (rect.width >= 150 && rect.height >= 80) {
+            bestContainer = parent;
+            break;
+          }
           container = parent;
-          break;
         }
-        container = parent;
+        container = bestContainer || container;
       }
 
       console.log(LOG, 'Widget container:', container.tagName, container.getBoundingClientRect());
@@ -286,12 +382,48 @@
       var stableCount = 0;
       var highlightShown = false;
 
+      // Force NR1's IntersectionObserver to re-fire by scrolling the
+      // widget fully out of view and back.  We inject a temporary spacer
+      // so there is always enough scroll room — even on short dashboards
+      // where all widgets are already visible.
+      function nudgeObservers() {
+        var scrollEl = null;
+        var el = container.parentElement;
+        while (el && el !== document.body) {
+          var cs = window.getComputedStyle(el);
+          if ((cs.overflowY === 'auto' || cs.overflowY === 'scroll') && el.scrollHeight > el.clientHeight) {
+            scrollEl = el;
+            break;
+          }
+          el = el.parentElement;
+        }
+        if (!scrollEl) scrollEl = document.scrollingElement || document.documentElement;
+
+        console.log(LOG, 'Nudging scroll container for IntersectionObserver:', scrollEl.tagName);
+
+        // Add a spacer so the container can always scroll past the widget
+        var spacer = document.createElement('div');
+        spacer.style.cssText = 'height:' + (window.innerHeight + 500) + 'px;pointer-events:none';
+        scrollEl.appendChild(spacer);
+
+        var origTop = scrollEl.scrollTop;
+        var jumpDistance = (scrollEl.clientHeight || window.innerHeight) + 200;
+        scrollEl.scrollTop = origTop + jumpDistance;
+
+        requestAnimationFrame(function () {
+          scrollEl.scrollTop = origTop;
+          spacer.remove();
+        });
+      }
+
       function showOverlayAndFade() {
         if (highlightShown) return;
         highlightShown = true;
+        _isHighlighting = false;
         clearInterval(pollInterval);
         positionOverlay();
         overlay.style.opacity = '1';
+        nudgeObservers();
         setTimeout(function () {
           if (overlay.parentNode) {
             overlay.style.opacity = '0';
@@ -301,6 +433,7 @@
       }
 
       var pollInterval = setInterval(function () {
+        if (highlightShown) { clearInterval(pollInterval); return; }
         var r = container.getBoundingClientRect();
         if (Math.abs(r.top - lastTop) < 1) { stableCount++; } else { stableCount = 0; }
         lastTop = r.top;
@@ -312,6 +445,7 @@
 
       // Safety: force display after 2 seconds if scroll never settles
       setTimeout(function () {
+        clearInterval(pollInterval);
         showOverlayAndFade();
       }, 2000);
     }
@@ -319,8 +453,18 @@
     // First attempt
     var result = findTitleInDom();
     if (result) {
-      console.log(LOG, 'Found via strategy:', result.strategy, result.el);
-      showHighlight(result.el);
+      var foundRect = result.el.getBoundingClientRect();
+      console.log(LOG, 'Found via strategy:', result.strategy);
+      console.log(LOG, 'Element:', result.el.tagName, 'textContent:', JSON.stringify((result.el.textContent || '').slice(0, 80)));
+      console.log(LOG, 'Element rect:', { top: Math.round(foundRect.top), left: Math.round(foundRect.left), width: Math.round(foundRect.width), height: Math.round(foundRect.height) });
+      // Log parent chain for debugging
+      var debugEl = result.el;
+      for (var di = 0; di < 5 && debugEl.parentElement; di++) {
+        debugEl = debugEl.parentElement;
+        var dr = debugEl.getBoundingClientRect();
+        console.log(LOG, 'Parent ' + (di + 1) + ':', debugEl.tagName, debugEl.className ? ('.' + debugEl.className.split(' ')[0]) : '', { top: Math.round(dr.top), left: Math.round(dr.left), width: Math.round(dr.width), height: Math.round(dr.height) });
+      }
+      showHighlight(result.el, result._isContainer);
       return;
     }
 
@@ -366,7 +510,7 @@
         var retryResult = findTitleInDom();
         if (retryResult) {
           console.log(LOG, 'Found after scroll (attempt ' + retryAttempts + ') via:', retryResult.strategy, retryResult.el);
-          showHighlight(retryResult.el);
+          showHighlight(retryResult.el, retryResult._isContainer);
           return;
         }
         if (retryAttempts < maxRetries && currentScroll < maxScroll) {
@@ -389,6 +533,7 @@
           } else {
             console.warn(LOG, 'No elements found containing even the first 6 chars of the title');
           }
+          _isHighlighting = false;
         }
       }, 300);
     }
@@ -399,32 +544,36 @@
   // ============================================================
   // Listen for commands from the service worker
   // ============================================================
-  try {
-    chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
-      if (message.action === 'GET_LOCATION') {
-        // Request location from the page script
-        window.postMessage({ type: 'NR1_UTILS_GET_LOCATION' }, window.location.origin);
-        // The page script will respond via NR1_UTILS_LOCATION_RESPONSE
-        // which gets forwarded above
-      }
+  if (!_listenersRegistered) {
+    _listenersRegistered = true;
+    try {
+      chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
+        if (sender.id !== chrome.runtime.id) return;
 
-      if (message.action === 'UPDATE_URL') {
-        // Navigate the page to the new URL
-        window.location.href = message.url;
-      }
+        if (message.action === 'GET_LOCATION') {
+          // Request location from the page script
+          window.postMessage({ type: 'NR1_UTILS_GET_LOCATION' }, window.location.origin);
+          // The page script will respond via NR1_UTILS_LOCATION_RESPONSE
+          // which gets forwarded above
+        }
 
-      if (message.action === 'GET_DEBUG_INFO') {
-        // Forward to the page script to re-send cached debug info
-        window.postMessage({ type: 'NR1_UTILS_GET_DEBUG_INFO' }, window.location.origin);
-      }
+        if (message.action === 'GET_DEBUG_INFO') {
+          // Forward to the page script to re-send cached debug info
+          window.postMessage({ type: 'NR1_UTILS_GET_DEBUG_INFO' }, window.location.origin);
+        }
 
-      if (message.action === 'HIGHLIGHT_WIDGET') {
-        console.log('[NR1 Utils content] HIGHLIGHT_WIDGET received:', message.widgetTitle);
-        highlightWidgetOnPage(message.widgetTitle, message.widgetId);
-      }
-    });
-  } catch (e) {
-    // Extension context invalidated
+        if (message.action === 'HIGHLIGHT_WIDGET') {
+          // Debounce rapid-fire highlight requests (clicking Locate can send duplicates)
+          clearTimeout(_highlightDebounce);
+          _highlightDebounce = setTimeout(function () {
+            console.log('[NR1 Utils content] HIGHLIGHT_WIDGET received:', message.widgetTitle);
+            highlightWidgetOnPage(message.widgetTitle, message.widgetId, message.pageName);
+          }, 100);
+        }
+      });
+    } catch (e) {
+      // Extension context invalidated
+    }
   }
 
   // Send initial URL on load

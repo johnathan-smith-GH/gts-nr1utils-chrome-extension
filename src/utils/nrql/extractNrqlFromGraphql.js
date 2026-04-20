@@ -6,9 +6,9 @@ import parseNrqlListing from './parseNrqlListing.js';
  */
 function isNrqlString(value) {
   if (typeof value !== 'string') return false;
-  return /\bSELECT\b/i.test(value) && /\bFROM\b/i.test(value)
-    || /\bSHOW\b/i.test(value) && /\bFROM\b/i.test(value)
-    || /\bFROM\b/i.test(value) && /\bSINCE\b/i.test(value);
+  return (/\bSELECT\b/i.test(value) && /\bFROM\b/i.test(value))
+    || (/\bSHOW\b/i.test(value) && /\bFROM\b/i.test(value))
+    || (/\bFROM\b/i.test(value) && /\bSINCE\b/i.test(value));
 }
 
 /**
@@ -33,8 +33,8 @@ function findNrqlData(obj) {
  */
 function extractAccountId(variables) {
   if (!variables) return null;
-  if (variables.accountId != null) return variables.accountId;
-  if (variables.account_id != null) return variables.account_id;
+  if (variables.accountId !== null && variables.accountId !== undefined) return variables.accountId;
+  if (variables.account_id !== null && variables.account_id !== undefined) return variables.account_id;
   if (Array.isArray(variables.accountIds) && variables.accountIds.length > 0) return variables.accountIds[0];
   if (Array.isArray(variables.account_ids) && variables.account_ids.length > 0) return variables.account_ids[0];
   return null;
@@ -78,6 +78,7 @@ function extractWidgetHints(variables, query) {
 
     // Scan all keys for widget/layout-related identifiers
     for (var vKey in variables) {
+      if (!variables.hasOwnProperty(vKey)) continue;
       if (vKey in knownKeys) continue; // already handled
       var lk = vKey.toLowerCase();
       if ((lk.indexOf('widget') !== -1 || lk.indexOf('layout') !== -1) && variables[vKey] != null) {
@@ -108,50 +109,56 @@ const extractNrqlFromGraphql = (graphqlRequests) => {
   const nrqlRequests = [];
 
   for (const gqlReq of graphqlRequests) {
-    if (!gqlReq.query || !/nrql/i.test(gqlReq.query)) continue;
+    if (!gqlReq.query) continue;
 
-    // Try to find the NRQL string in variables
-    let nrqlQuery = null;
+    // Collect ALL NRQL strings from variables
+    var nrqlQueries = [];
     if (gqlReq.variables) {
       for (const value of Object.values(gqlReq.variables)) {
         if (isNrqlString(value)) {
-          nrqlQuery = value;
-          break;
+          nrqlQueries.push(value);
         }
       }
     }
 
     // Fallback: try to extract inline NRQL from the query text
-    if (!nrqlQuery) {
-      const inlineMatch = gqlReq.query.match(/nrql\s*\([^)]*query\s*:\s*"((?:[^"\\]|\\.)*)"/);
-      if (inlineMatch) {
-        nrqlQuery = inlineMatch[1].replace(/\\"/g, '"');
+    if (nrqlQueries.length === 0 && /nrql/i.test(gqlReq.query)) {
+      // Match formats like: query(nrql:"SELECT...") or nrql(query:"SELECT...")
+      var inlineRegex = /(?:query\s*\(\s*nrql\s*:\s*"|nrql\s*\([^]*?query\s*:\s*")((?:[^"\\]|\\.)*)"/g;
+      var inlineMatch;
+      while ((inlineMatch = inlineRegex.exec(gqlReq.query)) !== null) {
+        var extracted = inlineMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n');
+        if (isNrqlString(extracted)) {
+          nrqlQueries.push(extracted);
+        }
       }
     }
 
-    if (!nrqlQuery) continue;
+    if (nrqlQueries.length === 0) continue;
 
     const accountId = extractAccountId(gqlReq.variables);
     const responseData = gqlReq.response ? gqlReq.response.data : null;
     const nrqlData = findNrqlData(responseData);
-    const parsedQuery = parseNrqlListing(nrqlQuery);
     const widgetHints = extractWidgetHints(gqlReq.variables, gqlReq.query);
 
-    var nrqlReqObj = {
-      id: -1,
-      requestId: gqlReq.requestId,
-      variables: { accountId: accountId },
-      query: nrqlQuery,
-      response: nrqlData || responseData,
-      errors: gqlReq.errors,
-      status: gqlReq.errors ? 'error' : 'success',
-      type: LogRequestType.CHART,
-      name: parsedQuery.name,
-      timing: gqlReq.timing
-    };
-    if (widgetHints) nrqlReqObj.widgetHints = widgetHints;
-
-    nrqlRequests.push(nrqlReqObj);
+    for (var qi = 0; qi < nrqlQueries.length; qi++) {
+      var nrqlQuery = nrqlQueries[qi];
+      const parsedQuery = parseNrqlListing(nrqlQuery);
+      var nrqlReqObj = {
+        id: -1,
+        requestId: gqlReq.requestId,
+        variables: { accountId: accountId },
+        query: nrqlQuery,
+        response: nrqlData || responseData,
+        errors: gqlReq.errors,
+        status: gqlReq.errors ? 'error' : 'success',
+        type: LogRequestType.CHART,
+        name: parsedQuery.name,
+        timing: gqlReq.timing
+      };
+      if (widgetHints) nrqlReqObj.widgetHints = widgetHints;
+      nrqlRequests.push(nrqlReqObj);
+    }
   }
 
   return nrqlRequests;
