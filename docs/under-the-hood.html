@@ -116,8 +116,8 @@
     <ul>
       <li><strong><code>early-wrap.js</code></strong> — Injected into the page's main world via manifest (<code>world: "MAIN"</code>, <code>run_at: "document_start"</code>). Wraps <code>window.fetch</code> and <code>XMLHttpRequest.prototype.open/send</code> before any page JavaScript executes. Sends two-phase messages via <code>window.postMessage</code> restricted to <code>window.location.origin</code>. XHR wrappers listen for <code>load</code>, <code>error</code>, and <code>abort</code> events to track all request outcomes.</li>
       <li><strong><code>page-script.js</code></strong> — Loaded asynchronously into the main world via a <code>&lt;script src&gt;</code> tag injected by <code>content.js</code>. Handles debug info collection (platform info, nerdpack metadata, nerdlet navigation). Skips fetch/XHR wrapping if <code>early-wrap.js</code> already did it (checks <code>window.__NR1_UTILS_EARLY_WRAP__</code>).</li>
-      <li><strong><code>content.js</code></strong> — Runs in the isolated world at <code>document_start</code>. Bridges between the main world (page scripts) and the service worker via <code>window.addEventListener('message')</code> and <code>chrome.runtime.sendMessage</code>. Detects SPA navigation by listening for <code>popstate</code> and <code>hashchange</code> events. Also executes the "Locate on Page" widget highlight logic directly in the DOM (7 search strategies + scroll-to-lazy-load).</li>
-      <li><strong><code>background.js</code></strong> — Service worker. Routes messages between content scripts and the side panel via a Chrome runtime port (<code>nr1-utils-panel</code>). Uses a <code>PANEL_READY</code> handshake so the panel signals readiness before buffered data is sent. Persists <code>widgetMap</code> and <code>preserveLog</code> to <code>chrome.storage.session</code> to survive service worker restarts. Validates incoming messages for required fields. Buffers requests, caches debug info, and manages nerdpack metadata fetching via <code>chrome.scripting.executeScript</code>.</li>
+      <li><strong><code>content.js</code></strong> — Runs in the isolated world at <code>document_start</code>. Bridges between the main world (page scripts) and the service worker via <code>window.addEventListener('message')</code> and <code>chrome.runtime.sendMessage</code>. Detects SPA navigation by listening for <code>popstate</code> and <code>hashchange</code> events. Also executes the "Locate on Page" widget highlight logic directly in the DOM (9 search strategies + scroll-to-lazy-load). Incoming <code>HIGHLIGHT_WIDGET</code> messages are debounced 100ms to prevent double-highlights.</li>
+      <li><strong><code>background.js</code></strong> — Service worker. Routes messages between content scripts and the side panel via a Chrome runtime port (<code>nr1-utils-panel</code>). Uses a <code>PANEL_READY</code> handshake so the panel signals readiness before buffered data is sent. Persists <code>widgetMap</code> and <code>preserveLog</code> to <code>chrome.storage.session</code> to survive service worker restarts (with quota retry: if write fails, oldest 10% of requests are trimmed and write retried). Validates incoming messages for required fields. Buffers requests (capped at <code>MAX_PENDING_REQUESTS = 500</code>; stale pending entries evicted after <code>PENDING_REQUEST_TTL = 60s</code>), caches debug info, and manages nerdpack metadata fetching via <code>chrome.scripting.executeScript</code>. Distinguishes full page loads (clears widget map + all requests) from SPA navigations (sends <code>PAGE_NAVIGATED</code> only).</li>
     </ul>
     <p><strong>Message flow:</strong> <code>early-wrap.js</code> (main world) → <code>window.postMessage</code> (origin-restricted) → <code>content.js</code> (isolated world) → <code>chrome.runtime.sendMessage</code> → <code>background.js</code> (service worker) → <code>port.postMessage</code> → side panel (<code>App.js</code>)</p>
     <p><strong>Security:</strong> All <code>window.postMessage</code> calls use <code>window.location.origin</code> as the target origin (not <code>'*'</code>) to prevent cross-origin message interception. All <code>chrome.tabs.query</code> results are null-checked before tab access. Promise chains include <code>.catch()</code> handlers to prevent unhandled rejections. Incoming messages are validated for required fields. The <code>completeRequest</code> reducer uses a <code>safeAssign</code> helper to prevent prototype pollution from network data. Content script message handlers validate <code>sender.id</code> matches the extension.</p>
@@ -143,6 +143,7 @@
       <li>Sent when the response arrives (fetch <code>.then()</code>) or fails (fetch <code>.catch()</code>)</li>
       <li>Contains: <code>requestId</code>, <code>url</code>, <code>requestBody</code>, <code>responseBody</code>, <code>timing</code> (startTime, totalTime, blockedTime)</li>
       <li>Response body is read via <code>response.clone().text()</code> with a 5-second timeout race — if the body can't be read (cross-origin, very large), falls back to empty string</li>
+      <li><strong>5MB cap:</strong> Bodies exceeding <code>MAX_BODY_SIZE = 5 × 1024 × 1024</code> bytes are replaced with <code>'[Response too large (&gt;5MB)]'</code> before forwarding. The same cap is applied in <code>page-script.js</code>.</li>
       <li>XHR interception listens for <code>load</code>, <code>error</code>, and <code>abort</code> events so failed or cancelled requests are still tracked (with empty response body)</li>
       <li><code>App.js processRequestComplete()</code> calls <code>buildGraphqlRequests</code> or <code>buildNrqlRequests</code> to parse the response, then the Redux <code>completeRequest</code> reducer finds the pending entry by <code>requestId</code> and merges in the response data. For batch NRQL responses, each query is completed with its compound <code>requestId</code> to match the corresponding pending entry.</li>
       <li>Status is set to <code>'success'</code>, <code>'error'</code>, or <code>'timeout'</code> (timeout detected by searching error messages for the word "timeout")</li>
@@ -194,6 +195,17 @@
       <li><strong>Memory optimization:</strong> Only the last entry in a traceGroups response (Trace groups) receives the full parsed response object — earlier entries get a <code>_summary</code> reference instead. This avoids tripling large payloads (&gt;1 MB) in Redux state.</li>
       <li>DT entries are routed to the NRQL tab via <code>updateNrqlRequests()</code></li>
       <li>In <code>RequestsPage.js</code>, if a request has a <code>_dtVisualizationTitle</code>, it is used directly as the widget match title for the Locate on Page button (bypassing the dashboard widget map lookup)</li>
+    </ul>
+  </div>
+
+  <h3>Signal Evaluation (bork-sniffer)</h3>
+  <div class="tech-section">
+    <p>Handled by <code>buildNrqlFromSignals.js</code></p>
+    <ul>
+      <li>URL matching: <code>url.hostname === SIGNAL_EVAL_HOST</code> (the bork-sniffer hostname constant)</li>
+      <li>Parses <code>/v5</code> signal evaluation request payloads to reconstruct a readable NRQL-style query: <code>SELECT {selectClause} FROM {eventType} [WHERE {whereClause}] [FACET {facetAttr}]</code></li>
+      <li>Matches each request to its corresponding response entry by <code>selectClause</code></li>
+      <li>Returns <code>LogRequestType.CHART</code> entries — these participate in widget placeholder resolution for signal-based widgets</li>
     </ul>
   </div>
 
@@ -276,10 +288,20 @@
     <p>Key Redux actions:</p>
     <ul>
       <li><code>addPendingGqlRequest</code> / <code>addPendingNrqlRequest</code> — Add pending entries to state</li>
-      <li><code>completeRequest</code> — Finds a pending entry by <code>requestId</code> and merges response data</li>
+      <li><code>completeRequest</code> — Finds a pending entry by <code>requestId</code> and merges response data. For polling completions (<code>progress.completed = true</code>), inherits <code>_matchedWidget</code> from the originating request that shares the same token, ensuring widget correlation persists across poll cycles.</li>
       <li><code>updateGqlRequests</code> / <code>updateNrqlRequests</code> — Add completed entries (legacy path)</li>
       <li><code>toggleSelectedIndex</code> / <code>selectAllVisible</code> / <code>clearSelectedIndices</code> — Manage checkbox selection</li>
-      <li><code>clearLog</code> — Clears all requests for the current tab</li>
+      <li><code>clearAllRequests</code> — Clears all requests; when called with <code>{ clearWidgets: true }</code> (full navigation) also resets the widget map. SPA navigations call this without <code>clearWidgets</code>.</li>
+    </ul>
+    <p><strong>UI-side cap:</strong> <code>MAX_REQUESTS = 2000</code> — each NRQL and GQL request array in Redux state is capped at 2000 entries. Oldest entries are dropped when the cap is reached.</p>
+  </div>
+
+  <h3>Stale Pending Request Eviction</h3>
+  <div class="tech-section">
+    <ul>
+      <li>Managed in <code>background.js</code> (<code>MAX_PENDING_REQUESTS = 500</code>, <code>PENDING_REQUEST_TTL = 60000ms</code>)</li>
+      <li>On each <code>NEW_REQUEST_START</code>, the service worker scans pending entries and evicts any older than the TTL. This prevents the buffer from filling with orphaned pending entries from requests that never completed.</li>
+      <li>If the pending buffer exceeds <code>MAX_PENDING_REQUESTS</code> after eviction, the oldest pending entries are also trimmed.</li>
     </ul>
   </div>
 
@@ -292,7 +314,7 @@
       <li>Read from <code>window.__nr</code> by <code>readPlatformInfo()</code> in <code>page-script.js</code></li>
       <li>Extracts: version, platformVersion, env, region (from hostname), userId, accountId</li>
       <li>Multiple fallback paths for userId/accountId: <code>__nr.initialState</code>, URL path (<code>/accounts/\d+</code>), query params, <code>UNSTABLE_app_shell</code>, <code>__hurlState</code>, <code>window.newrelic</code></li>
-      <li>Re-reads on SPA navigation (1-second URL change poll in <code>page-script.js</code>)</li>
+      <li>Re-reads on SPA navigation (1-second URL change poll in <code>page-script.js</code>). The poll pauses when <code>document.visibilityState === 'hidden'</code> and resumes on the <code>visibilitychange</code> event to avoid unnecessary work in background tabs.</li>
     </ul>
   </div>
 
@@ -343,18 +365,34 @@
       <li>Walks <code>response.data.actor.entity.pages[].widgets[]</code> to build an array of widget descriptors: <code>{ widgetId, title, pageName, nrqlQueries, layout, inaccessible, dashboardAccountId, dashboardOwnerEmail }</code></li>
       <li>NRQL queries are extracted from <code>widget.rawConfiguration.nrqlQueries[].query</code></li>
       <li>Widgets with <code>visualization.id === 'viz.inaccessible'</code> are flagged as inaccessible</li>
+      <li><strong>Static Mermaid detection:</strong> Widgets with <code>visualization.id === 'viz.markdown'</code> whose <code>rawConfiguration.text</code> contains the string <code>"mermaid"</code> are stored with <code>_isStaticWidget: true</code> and <code>_mermaidContent</code>. Their title is extracted from a <code>pie title &lt;NAME&gt;</code> pattern in the diagram source for Locate on Page.</li>
       <li>The widget map is stored in Redux state via <code>setWidgetMap</code> action</li>
+      <li><strong>Widget NRQL index:</strong> After each widget map update, <code>buildWidgetNrqlIndex(widgetMap)</code> rebuilds a pre-computed <code>_widgetNrqlIndex</code> in Redux state (<code>{ exactMap: {normalizedQuery → widget[]}, widgets }</code>) for O(1) exact query lookups used by the occurrence slot system.</li>
     </ul>
   </div>
 
   <h3>Widget Matching</h3>
   <div class="tech-section">
+    <h4>Widget NRQL Index</h4>
+    <ul>
+      <li><code>buildWidgetNrqlIndex(widgetMap)</code> in <code>matchWidgetByNrql.js</code> builds <code>{ exactMap: {normalizedQuery → widget[]}, widgets }</code> from the full widget map for O(1) exact lookups</li>
+      <li><code>matchAllWidgetsByNrql(request, index)</code> returns <strong>all</strong> matching widgets (not just the first), powering the occurrence slot system — multiple results are sorted by layout position before slot assignment</li>
+    </ul>
+    <h4>Single-Request Matching</h4>
     <ul>
       <li><code>matchWidgetByNrql(request, widgetMap)</code> in <code>RequestsPage.js</code> matches a captured NRQL query to a dashboard widget</li>
       <li><strong>Pass 1 — Exact match:</strong> Normalizes whitespace and compares lowercased query text</li>
       <li><strong>Pass 2 — Substring match:</strong> Checks if one query contains the other, handling NR1 runtime modifications to query aliases (e.g., <code>'Slowest 10%'</code> becoming <code>'Slowest 10% (s) (90%)'</code>). Scores matches by query length similarity, preferring the most specific (closest length) match.</li>
       <li><strong>Pass 3 — FROM-clause + column-overlap:</strong> Extracts the <code>FROM</code> table name and <code>SELECT</code> columns from both queries. Matches when the FROM tables are identical and every SELECT column in the widget-defined query also appears in the captured query. This handles NR1 visualization transforms that inject extra columns (e.g., the logger log-table-widget adding timestamp and message columns to a user-defined query).</li>
       <li>Widget titles are also included in the search filter logic, so users can search by widget name</li>
+    </ul>
+    <h4>Occurrence Index &amp; Slot Assignment</h4>
+    <p>When multiple widgets share the same title on the same dashboard page, the extension assigns each an occurrence index to prevent two NRQL requests from claiming the same widget:</p>
+    <ul>
+      <li><code>computeOccurrenceIndex(widget, widgetMap)</code> in <code>actionCreators.js</code>: finds all same-title/same-page siblings, sorts them by layout row then column, and returns the 0-based index for the given widget</li>
+      <li><code>getClaimedSlots(requests)</code>: builds a <code>Set</code> of <code>title|page|occurrenceIndex</code> strings from already-matched requests to prevent two captures from claiming the same slot</li>
+      <li><code>computeMatchWithSlot(request, index, claimedSlots)</code>: calls <code>matchAllWidgetsByNrql</code>, sorts candidates by layout, and assigns the first unclaimed slot — the matched widget and its occurrence index are stored on the request object</li>
+      <li><code>HIGHLIGHT_WIDGET</code> now passes <code>occurrenceIndex</code> alongside <code>widgetTitle</code>, <code>widgetId</code>, and <code>pageName</code> so <code>content.js</code> can target the correct instance in the DOM</li>
     </ul>
   </div>
 
@@ -372,16 +410,20 @@
   <div class="tech-section">
     <p>Message flow: side panel → <code>background.js</code> → <code>content.js</code> (highlight runs here directly)</p>
     <ul>
-      <li>Panel sends <code>HIGHLIGHT_WIDGET</code> with <code>widgetTitle</code> and <code>widgetId</code> via the port</li>
+      <li>Panel sends <code>HIGHLIGHT_WIDGET</code> with <code>widgetTitle</code>, <code>widgetId</code>, <code>pageName</code>, and <code>occurrenceIndex</code> via the port. Incoming messages are debounced 100ms to prevent double-highlights from rapid button clicks.</li>
       <li><code>background.js</code> forwards to the active tab's content script via <code>chrome.tabs.sendMessage</code>. If the active tab query fails, it falls back to trying all <code>*.newrelic.com</code> tabs.</li>
       <li><code>content.js</code> runs <code>highlightWidgetOnPage()</code> directly (the highlight logic was moved from <code>page-script.js</code> to <code>content.js</code> for reliability — the page script message relay was unreliable)</li>
     </ul>
+    <h4>Dashboard Tab Auto-Switching</h4>
+    <p>Before running the DOM search, <code>content.js</code> checks if the target widget is on a different dashboard page tab than the one currently visible. It queries all <code>[role="tab"]</code> elements and compares their text to the widget's <code>pageName</code>. If a match is found and its <code>aria-selected</code> is not <code>"true"</code>, the tab is clicked and the highlight is deferred by 600ms to allow the tab content to render.</p>
+
     <h4>DOM Search Strategies (tried in order)</h4>
     <ol>
       <li value="0"><strong>CardBase container with heading</strong> — Queries all <code>[class*="CardBase"]</code>, <code>[class*="card-base"]</code>, <code>section</code>, and <code>article</code> elements. Prefers the smallest card that contains a heading (<code>h1</code>–<code>h6</code>) matching the title text; falls back to textContent-only containment if no heading match exists. Returns the container directly (skips the walk-up step). Effective for DT visualizations and dashboard widgets rendered inside NR1 card components.</li>
       <li><strong>Exact leaf-node textContent</strong> — Matches elements with no children whose <code>textContent</code> exactly equals the widget title</li>
       <li><strong>Exact innerText on small elements</strong> — Matches elements under 100px tall whose <code>innerText</code> equals the title</li>
       <li><strong>textContent with children (size-bounded)</strong> — Matches elements under 60px tall / 600px wide, allowing child nodes (handles NR1 titles with tooltip icons)</li>
+      <li><strong>textContent startsWith on small elements</strong> — Matches elements under 60px tall whose <code>textContent</code> starts with the widget title (handles cases where suffix text or icon characters are appended inside the same element)</li>
       <li><strong>Title attribute</strong> — Matches elements whose HTML <code>title</code> attribute equals the widget title (handles CSS-truncated titles)</li>
       <li><strong>aria-label</strong> — Matches elements whose <code>aria-label</code> equals the widget title</li>
       <li><strong>startsWith innerText</strong> — Matches elements whose innerText starts with the widget title (handles appended icon text like info badges)</li>
@@ -403,6 +445,7 @@
       <li>Polls position until scroll settles (3 consecutive stable position checks at 50ms intervals), then fades in the overlay</li>
       <li>Safety timeout of 2 seconds forces display if scroll never settles</li>
       <li>Purple 3px border with glow shadow, fades out after 2 seconds</li>
+      <li><strong><code>nudgeObservers()</code>:</strong> After the overlay fades out, a temporary spacer element is appended to the widget container and the container is scrolled slightly off-screen then back. This re-triggers NR1's IntersectionObserver, prompting lazy-loaded widget content to resume rendering if it was interrupted by the scroll-to-lazy-load sequence.</li>
     </ul>
     <h4>Debug Logging</h4>
     <p>All Locate on Page operations log to the page console with prefix <code>[NR1 Utils Locate]</code>. When a widget can't be found, closest DOM matches are logged for diagnosis.</p>
@@ -426,8 +469,10 @@
     <ul>
       <li>The <code>setWidgetMap</code> Redux action merges new widgets with existing ones, deduplicating by <code>widgetId</code> + <code>pageName</code>. This supports multi-tab dashboards where each tab's widgets arrive in separate GraphQL responses.</li>
       <li>When the widget map is updated, all existing NRQL requests in state are eagerly re-matched against the new map. This ensures widgets detected after their NRQL queries fired still get correlated.</li>
-      <li>The widget map is cleared when "Clear Log" is clicked on the NRQL tab.</li>
+      <li>The widget map is cleared when "Clear Log" is clicked on the NRQL tab, and also on full page navigations (not SPA navigations).</li>
       <li>The widget map is persisted to <code>chrome.storage.session</code> alongside the request buffer. On service worker restart or panel reconnection, the background sends a <code>RESTORED_WIDGET_MAP</code> message after the panel signals <code>PANEL_READY</code>.</li>
+      <li><strong>Session storage quota retry:</strong> If writing to <code>chrome.storage.session</code> fails due to quota exhaustion, the service worker trims the oldest 10% of buffered requests from the write payload and retries once.</li>
+      <li><strong>Full vs. SPA navigation:</strong> Full page navigations (detected by <code>webNavigation</code> or <code>tabs.onUpdated</code> with a new URL) trigger <code>clearAllRequests({ clearWidgets: true })</code>, which resets both requests and the widget map. SPA navigations (popstate/hashchange forwarded from <code>content.js</code>) send only <code>PAGE_NAVIGATED</code>, preserving the widget map across in-page transitions.</li>
     </ul>
   </div>
 
@@ -493,18 +538,20 @@
       <tr><td><code>scripts/page-script.js</code></td><td>Debug info collection, fallback fetch/XHR wrapping, legacy widget highlight handler</td></tr>
       <tr><td><code>scripts/content.js</code></td><td>Message bridge (main world ↔ service worker), SPA navigation detection, widget highlight execution (DOM search, scroll-to-lazy-load, overlay)</td></tr>
       <tr><td><code>scripts/background.js</code></td><td>Service worker, message routing, request buffering, debug info caching, widget highlight routing with fallback tab discovery</td></tr>
-      <tr><td><code>src/App.js</code></td><td>Main React app, Redux wiring, request processing, dashboard widget map extraction</td></tr>
-      <tr><td><code>src/state/actionCreators.js</code></td><td>Redux reducers (request state, selection, filters)</td></tr>
+      <tr><td><code>src/index.js</code></td><td>Entry point, port connection with exponential backoff reconnection (500ms × 2ⁿ, up to 10 attempts), outbound message queue (up to 200 messages) flushed on reconnect</td></tr>
+      <tr><td><code>src/App.js</code></td><td>Main React app, Redux wiring, request processing, dashboard widget map extraction, Mermaid static widget detection</td></tr>
+      <tr><td><code>src/state/actionCreators.js</code></td><td>Redux reducers (request state, selection, filters); occurrence index computation and slot assignment for duplicate-title widget disambiguation</td></tr>
       <tr><td><code>src/state/rootSlice.js</code></td><td>Redux slice definition and initial state</td></tr>
       <tr><td><code>src/components/Navigation.js</code></td><td>Tab nav, Pause Listening, Clear Log, Export, filters, User Guide button</td></tr>
       <tr><td><code>src/components/RequestsPage.js</code></td><td>Left/right panel layout, search within result, banners (owning team, widget, error, inaccessible), Locate on Page button</td></tr>
       <tr><td><code>src/components/Log.js</code></td><td>Result list with sorting, select all, search filter</td></tr>
       <tr><td><code>src/components/LogEntry.js</code></td><td>Individual result row with live timer, status colors</td></tr>
-      <tr><td><code>src/components/ResponseDataSection.js</code></td><td>JSON rendering (react-json-view, clipboard disabled)</td></tr>
       <tr><td><code>src/components/DebugInfoPage.js</code></td><td>Debug Mode tab UI</td></tr>
       <tr><td><code>src/utils/graphql/buildGraphqlRequests.js</code></td><td>Parse GraphQL request/response into structured objects</td></tr>
       <tr><td><code>src/utils/nrql/buildNrqlRequests.js</code></td><td>Parse NRQL request/response</td></tr>
+      <tr><td><code>src/utils/nrql/buildNrqlFromSignals.js</code></td><td>Parse bork-sniffer signal evaluation requests into NRQL-style entries for the NRQL tab</td></tr>
       <tr><td><code>src/utils/nrql/extractNrqlFromGraphql.js</code></td><td>Extract embedded NRQL from GraphQL requests, widget hint extraction</td></tr>
+      <tr><td><code>src/utils/matchWidgetByNrql.js</code></td><td>Widget NRQL matching (exact, substring, FROM-clause fallback); exports <code>buildWidgetNrqlIndex</code> and <code>matchAllWidgetsByNrql</code> for the occurrence slot system</td></tr>
       <tr><td><code>src/utils/dt/buildDtRequests.js</code></td><td>Parse distributed tracing API responses into per-visualization entries</td></tr>
       <tr><td><code>src/App.css</code></td><td>All styles (must regenerate <code>App.css.proxy.js</code> after changes)</td></tr>
       <tr><td><code>src/App.css.proxy.js</code></td><td>Snowpack CSS proxy — inlines CSS as JS string. <strong>Must be regenerated</strong> after any CSS edit.</td></tr>

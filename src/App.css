@@ -413,6 +413,19 @@ body {
   }
 }
 
+.App-requestType--static {
+  background-color: #b45309;
+  border-color: #b45309;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-requestType--static {
+    background-color: transparent;
+    border: 1px solid #d97706;
+    color: #d97706;
+  }
+}
+
 .App-requestType--trace {
   background-color: #e67e22;
   border-color: #e67e22;
@@ -551,6 +564,19 @@ body {
     background-color: transparent;
     border: 1px solid #777;
     color: #777;
+  }
+}
+
+.App-requestTimingLabel--static {
+  background-color: #b45309;
+  border-color: #b45309;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-requestTimingLabel--static {
+    background-color: transparent;
+    border: 1px solid #d97706;
+    color: #d97706;
   }
 }
 
@@ -761,6 +787,20 @@ body {
   .App-dashboardNotice {
     color: #ccc;
     background-color: rgba(130, 210, 170, 0.06);
+  }
+}
+
+.App-staticWidgetBanner {
+  padding: 12px 20px;
+  background-color: #fffbeb;
+  border-left: 4px solid #d97706;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .App-staticWidgetBanner {
+    background-color: rgba(217, 119, 6, 0.1);
   }
 }
 

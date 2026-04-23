@@ -15,4 +15,5 @@ export let LogRequestType;
   LogRequestType["CHART"] = "CHART";
   LogRequestType["UNKNOWN"] = "UNKNOWN";
   LogRequestType["TRACE"] = "TRACE";
+  LogRequestType["STATIC"] = "STATIC";
 })(LogRequestType || (LogRequestType = {}));

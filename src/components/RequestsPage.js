@@ -142,6 +142,33 @@ const RequestsPage = props => {
           }
         });
       });
+      // Static Mermaid widgets — hardcoded data, no NRQL ever executed
+      widgetMap.forEach(function (w) {
+        if (!w._staticMermaid) return;
+        // Extract the chart title from the Mermaid source so content.js can find
+        // the rendered SVG text in the DOM (e.g. "pie title NETFLIX" → "NETFLIX").
+        // Falls back to the widget title (usually empty for viz.markdown).
+        var mermaidTitle = w.title || '';
+        if (!mermaidTitle && w._mermaidContent) {
+          var titleMatch = w._mermaidContent.match(/\bpie\s+title\s+(.+)/i);
+          if (titleMatch) mermaidTitle = titleMatch[1].trim();
+        }
+        placeholders.push({
+          _rid: 'static-' + (w.widgetId || ''),
+          id: -1,
+          query: '',
+          variables: {},
+          response: null,
+          errors: null,
+          status: 'defined',
+          type: LogRequestType.STATIC,
+          name: 'Mermaid Chart',
+          timing: null,
+          _isStaticWidget: true,
+          _mermaidContent: w._mermaidContent,
+          _matchedWidget: { title: mermaidTitle, widgetId: w.widgetId, pageName: w.pageName }
+        });
+      });
     }
     return placeholders;
   }, [widgetMap, logData]);
@@ -432,6 +459,17 @@ const RequestsPage = props => {
   }, "Owning Team:"), /*#__PURE__*/React.createElement("span", {
     className: "App-owningTeamValue"
   }, owningTeam)),
+  currentQuery._isStaticWidget && /*#__PURE__*/React.createElement("div", {
+    className: "App-staticWidgetBanner"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "App-inaccessibleLabel"
+  }, "Static Hardcoded Widget"), /*#__PURE__*/React.createElement("span", {
+    className: "App-inaccessibleNote"
+  }, "This visualization contains hardcoded data. It does not execute any NRQL query \u2014 the values shown in the dashboard are fixed and will never change based on queried data."),
+  currentQuery._mermaidContent && /*#__PURE__*/React.createElement("pre", {
+    className: "App-rawJson",
+    style: { marginTop: '8px', padding: '8px 12px', background: 'rgba(0,0,0,0.04)', borderRadius: '4px' }
+  }, currentQuery._mermaidContent)),
   (function () {
     if (currentWidgetMatch) {
       return /*#__PURE__*/React.createElement("div", {

@@ -1,0 +1,8 @@
+{
+  "name": "gts-nr1utils-chrome-extension",
+  "version": "1.13.0",
+  "description": "GTS utilities for NR1 — intercepts and analyzes NerdGraph and NRQL requests on New Relic pages",
+  "author": "GTS Engineering",
+  "homepage": "https://github.com/johnathan-smith-gh/gts-nr1utils-chrome-extension",
+  "license": "MIT"
+}

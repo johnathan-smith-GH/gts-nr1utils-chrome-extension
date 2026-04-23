@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.13.0
+### New Features
+- Add static widget detection for hardcoded Mermaid diagrams — `viz.markdown` widgets whose content contains `mermaid` appear as `STATIC` entries in the NRQL tab with a "Hardcoded data" label and a grey static badge; the detail view shows a "Static Hardcoded Widget" banner with the raw diagram source, and the pie-chart title is extracted for Locate on Page
+- Add signal evaluation capture — requests to the bork-sniffer signal evaluation endpoint (`/v5`) are now captured and parsed as `CHART` entries in the NRQL tab, enabling placeholder resolution for signal-based dashboard widgets
+- Add duplicate widget occurrence index — when multiple widgets share the same title on the same dashboard page, each is assigned an occurrence index (sorted by layout row→column) so Locate on Page always targets the correct instance; requests claim slots in order to prevent two captures from matching the same widget
+- Add dashboard page tab auto-switching on Locate on Page — if the matched widget is on a dashboard page tab that is not currently visible, the extension automatically clicks the correct tab before highlighting (600ms delay to allow tab render)
+- Add exponential backoff on port reconnection — disconnects now retry with `500ms × 2ⁿ` delay (capped at 30 seconds), up to 10 attempts; outbound messages are queued (up to 200) during reconnection and flushed on reconnect, preventing message loss on service worker restarts
+- Add full vs. SPA navigation distinction — full page navigations now trigger `clearAllRequests({ clearWidgets: true })` to reset both requests and the widget map; SPA navigations (popstate/hashchange) send `PAGE_NAVIGATED` without clearing the widget map
+
+### Bug Fixes
+- Fix DOM search Strategy 3b missing from widget locate sequence — `textContent.startsWith()` match on small elements is now included as the 4th strategy (between size-bounded textContent and title-attribute strategies), bringing the total to 9 strategies
+
+### Implementation Improvements
+- Add 5MB response body cap — response bodies larger than 5MB are replaced with `[Response too large (>5MB)]` in both `early-wrap.js` and `page-script.js` before storing or forwarding
+- Add stale pending request eviction — pending entries older than 60 seconds (`PENDING_REQUEST_TTL = 60000ms`) are evicted from the service worker buffer on each new request start; buffer size also capped at 500 pending entries (`MAX_PENDING_REQUESTS`)
+- Add `MAX_REQUESTS = 2000` UI-side cap — each NRQL and GQL request array in Redux state is capped at 2000 entries
+- Add session storage quota retry — if `chrome.storage.session` write fails due to quota, the oldest 10% of buffered requests are trimmed and the write is retried automatically
+- Add token-based poll widget linking — poll completion messages (`progress.completed = true`) inherit `_matchedWidget` from the originating request via token matching in `completeRequest`
+- Add page visibility optimization for navigation poll — the URL change poll in `page-script.js` pauses when the tab is hidden (`document.visibilityState === 'hidden'`) and resumes on the `visibilitychange` event
+- Add highlight debounce — `HIGHLIGHT_WIDGET` messages are debounced 100ms in `content.js` to prevent double-highlights from rapid Locate on Page button clicks
+- Add `nudgeObservers()` post-highlight behavior — after the highlight overlay is shown, a temporary spacer element is injected and the widget container is scrolled to re-trigger NR1's IntersectionObserver, encouraging lazy-loaded widget content to resume rendering
+
 ## 1.12.0
 ### New Features
 - Add Pause Listening toggle — pauses acceptance of new requests in the side panel while allowing in-flight requests to resolve normally. Button displays as dark yellow when paused (with "Resume listening" label) and green when active. State persists via localStorage.

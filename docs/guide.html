@@ -168,9 +168,11 @@
           <li><a href="#widget-correlation">Widget Correlation</a></li>
           <li><a href="#locate-on-page">Locate on Page</a></li>
           <li><a href="#widget-placeholders">Widget Placeholders</a></li>
+          <li><a href="#static-widgets">Static Widgets (Mermaid)</a></li>
           <li><a href="#inaccessible-widgets">Inaccessible Widgets</a></li>
         </ul>
       </li>
+      <li><a href="#signal-evaluation">Signal Evaluation Capture</a></li>
       <li><a href="#distributed-tracing">Distributed Tracing Capture</a>
         <ul>
           <li><a href="#dt-captured-entries">Captured Entries</a></li>
@@ -328,10 +330,12 @@
       <li>Matching uses exact comparison first, then falls back to substring containment to handle NR1 runtime alias modifications, then falls back to FROM-clause + column-overlap matching for visualization transforms that inject extra SELECT columns (e.g., logger log-table widgets).</li>
     </ul>
     <p>The search filter also matches against widget titles. For example, searching for "App Usage" will find the NRQL result that corresponds to the "App Usage" widget on the dashboard.</p>
+    <p>When a dashboard has multiple widgets with the same title on the same page, the extension assigns each an <strong>occurrence index</strong> based on layout position (sorted top-to-bottom, left-to-right). NRQL captures are slotted to the correct instance in order, so each request is matched to the right widget even when titles are duplicated.</p>
 
     <h3 id="locate-on-page">Locate on Page</h3>
     <p>When a NRQL result is matched to a dashboard widget, a <span class="pill" style="background:#7c3aed;">LOCATE ON PAGE</span> button appears in the toolbar next to "Copy JSON to Clipboard". Clicking it scrolls the page to the corresponding widget and highlights it with a purple overlay that fades after 2 seconds. The button also appears for widgets that have no title, as long as a widget ID is available.</p>
     <p>For widgets that are below the fold and not yet rendered by New Relic (which lazy-loads widgets via IntersectionObserver), the extension automatically scrolls the dashboard incrementally to trigger rendering, then locates and highlights the widget once it appears in the DOM.</p>
+    <p>If the matched widget is on a dashboard page tab that is not currently visible, the extension automatically switches to the correct tab before highlighting. After clicking the tab, the extension waits briefly for the tab to render before performing the highlight.</p>
 
     <h3 id="widget-placeholders">Widget Placeholders</h3>
     <p>When a dashboard is detected, the NRQL tab shows <span class="pill pill-grey">DEFINED</span> grey entries for each widget-defined NRQL query that has not yet been captured as a live network request. A <strong>"Dashboard detected"</strong> notice banner appears at the top of the results list explaining this behavior.</p>
@@ -345,6 +349,14 @@
     <ul>
       <li><strong>Use "Locate on Page"</strong> — Click the <span class="pill" style="background:#7c3aed;">LOCATE ON PAGE</span> button on a grey entry. The extension scrolls to the widget, triggers its rendering, and the placeholder will be replaced once the query fires.</li>
       <li><strong>Scroll manually</strong> — Scroll through the dashboard page to load widgets naturally.</li>
+    </ul>
+
+    <h3 id="static-widgets">Static Widgets (Mermaid Diagrams)</h3>
+    <p>When a dashboard contains <code>viz.markdown</code> widgets with Mermaid diagram content, the extension shows them as <span class="pill pill-grey">STATIC</span> entries in the NRQL tab with a "Hardcoded data" label. These widgets do not fire NRQL network requests — their content is fully hardcoded in the widget definition.</p>
+    <ul>
+      <li>Static entries are created from the dashboard widget definition and show the pie-chart title (extracted from <code>pie title &lt;NAME&gt;</code>) as the entry name for Locate on Page.</li>
+      <li>Clicking a static entry shows a <strong>"Static Hardcoded Widget"</strong> banner in the detail view with the raw Mermaid source displayed below.</li>
+      <li>The <span class="pill" style="background:#7c3aed;">LOCATE ON PAGE</span> button works for static entries when a widget ID is available — it scrolls to and highlights the widget just like live entries.</li>
     </ul>
 
     <h3 id="inaccessible-widgets">Inaccessible Widgets</h3>
@@ -376,6 +388,16 @@
 
     <h3 id="dt-locate-on-page">Locate on Page</h3>
     <p>The <span class="pill" style="background:#7c3aed;">LOCATE ON PAGE</span> button works for distributed tracing entries. Clicking it scrolls to and highlights the corresponding chart or table section on the Distributed Tracing page, using the same highlight overlay as dashboard widget location.</p>
+  </div>
+
+  <h2 id="signal-evaluation">Signal Evaluation Capture</h2>
+  <div class="section">
+    <p>The extension captures requests to the New Relic signal evaluation service (bork-sniffer). These requests are used by signal-based dashboard widgets to evaluate alert conditions and thresholds.</p>
+    <p>Captured signal evaluation requests appear in the NRQL tab as <span class="pill pill-green">CHART</span> entries. The extension reconstructs a readable NRQL-style query string from the signal payload, showing the <code>SELECT</code> clause, <code>FROM</code> event type, and any <code>WHERE</code> or <code>FACET</code> conditions.</p>
+    <ul>
+      <li>Signal evaluation entries participate in widget placeholder resolution — when a signal-based widget fires, its grey <span class="pill pill-grey">DEFINED</span> placeholder is automatically replaced with the live capture.</li>
+      <li>These entries work with all standard features: search, filter, export, and Locate on Page.</li>
+    </ul>
   </div>
 
   <h2 id="debug-mode">Debug Mode</h2>

@@ -96,14 +96,15 @@ function extractWidgetMapFromDashboard(graphqlRequests) {
         var raw = w.rawConfiguration || {};
         var viz = w.visualization && w.visualization.id;
         var isInaccessible = viz === 'viz.inaccessible';
+        var isStaticMermaid = viz === 'viz.markdown' && typeof raw.text === 'string' && raw.text.indexOf('mermaid') !== -1;
         var nrqlQueries = [];
         if (raw.nrqlQueries && Array.isArray(raw.nrqlQueries)) {
           for (var qi = 0; qi < raw.nrqlQueries.length; qi++) {
             if (raw.nrqlQueries[qi].query) nrqlQueries.push(raw.nrqlQueries[qi].query);
           }
         }
-        if (nrqlQueries.length > 0 || w.title) {
-          widgets.push({
+        if (nrqlQueries.length > 0 || w.title || isStaticMermaid) {
+          var entry = {
             widgetId: w.id,
             title: w.title || '',
             pageName: pageName,
@@ -112,7 +113,12 @@ function extractWidgetMapFromDashboard(graphqlRequests) {
             inaccessible: isInaccessible,
             dashboardAccountId: dashboardAccountId,
             dashboardOwnerEmail: dashboardOwnerEmail
-          });
+          };
+          if (isStaticMermaid) {
+            entry._staticMermaid = true;
+            entry._mermaidContent = raw.text;
+          }
+          widgets.push(entry);
         }
       }
     }

@@ -35,9 +35,10 @@ const LogEntry = props => {
 
   const logRequest = request;
   const isPlaceholder = request._isPlaceholder;
+  const isStaticWidget = request._isStaticWidget;
   const isPending = request.status === 'pending';
-  const isTimeout = !isPending && !isPlaceholder && !!request._isTimeout;
-  const isError = !isPending && !isPlaceholder && !!request.errors;
+  const isTimeout = !isPending && !isPlaceholder && !isStaticWidget && !!request._isTimeout;
+  const isError = !isPending && !isPlaceholder && !isStaticWidget && !!request.errors;
 
   const truncateName = name => name.length > 28 ? `${name.slice(0, 28)}...` : name;
 
@@ -55,7 +56,11 @@ const LogEntry = props => {
   var timingLabel = 'Response time';
   var timingValue;
 
-  if (isPlaceholder) {
+  if (isStaticWidget) {
+    timingLabelClass += ' App-requestTimingLabel--static';
+    timingLabel = 'Hardcoded data';
+    timingValue = '';
+  } else if (isPlaceholder) {
     timingLabelClass += ' App-requestTimingLabel--defined';
     timingLabel = 'Defined in widget';
     timingValue = request._widgetTitle || '';
@@ -77,7 +82,9 @@ const LogEntry = props => {
 
   // Type badge class
   var typeClass = 'App-requestType';
-  if (isPlaceholder) {
+  if (isStaticWidget) {
+    typeClass += ' App-requestType--static';
+  } else if (isPlaceholder) {
     typeClass += ' App-requestType--defined';
   } else if (request.type === 'TRACE') {
     typeClass += ' App-requestType--trace';

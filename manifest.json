@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "GTS NR1 Utils",
   "description": "GTS utilities for NR1",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "short_name": "NR1 Utils",
   "author": "GTS Engineering",
   "homepage_url": "https://github.com/johnathan-smith-gh/gts-nr1utils-chrome-extension",

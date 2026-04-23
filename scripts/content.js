@@ -225,7 +225,7 @@
         var p = el.parentElement;
         for (var ci = 0; ci < 5 && p; ci++) {
           if (p.tagName === 'BUTTON' || p.tagName === 'NAV') return true;
-          var cls = (p.className || '').toLowerCase();
+          var cls = (typeof p.className === 'string' ? p.className : (p.className && p.className.baseVal) || '').toLowerCase();
           if (cls.indexOf('segmentedcontrol') !== -1 || cls.indexOf('tablist') !== -1 || cls.indexOf('tab-') !== -1 || cls.indexOf('-tabs') !== -1) return true;
           if (p.getAttribute && (p.getAttribute('role') === 'tab' || p.getAttribute('role') === 'tablist')) return true;
           p = p.parentElement;
@@ -469,7 +469,8 @@
       for (var di = 0; di < 5 && debugEl.parentElement; di++) {
         debugEl = debugEl.parentElement;
         var dr = debugEl.getBoundingClientRect();
-        console.log(LOG, 'Parent ' + (di + 1) + ':', debugEl.tagName, debugEl.className ? ('.' + debugEl.className.split(' ')[0]) : '', { top: Math.round(dr.top), left: Math.round(dr.left), width: Math.round(dr.width), height: Math.round(dr.height) });
+        var debugCls = typeof debugEl.className === 'string' ? debugEl.className : (debugEl.className && debugEl.className.baseVal) || '';
+        console.log(LOG, 'Parent ' + (di + 1) + ':', debugEl.tagName, debugCls ? ('.' + debugCls.split(' ')[0]) : '', { top: Math.round(dr.top), left: Math.round(dr.left), width: Math.round(dr.width), height: Math.round(dr.height) });
       }
       showHighlight(result.el, result._isContainer);
       return;

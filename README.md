@@ -4,7 +4,7 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 
 Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 Debug Mode panel, and information scattered across the New Relic UI into a single side panel.
 
-**Version:** 1.12.0
+**Version:** 1.13.0
 
 ## Features
 
