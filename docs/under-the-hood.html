@@ -134,7 +134,7 @@
       <li>Message type: <code>NR1_UTILS_REQUEST_START</code> → forwarded as <code>REQUEST_START</code> by content.js → <code>NEW_REQUEST_START</code> by background.js</li>
       <li>Sent immediately when <code>fetch()</code> or <code>XHR.send()</code> is called</li>
       <li>Contains: <code>requestId</code> (unique per request, format: <code>nr1-{counter}-{timestamp}</code>), <code>url</code>, <code>requestBody</code>, <code>startTime</code> (absolute <code>Date.now()</code>)</li>
-      <li><code>App.js processRequestStart()</code> parses the request body to extract the query, variables, and name, then creates a pending entry in Redux with <code>status: 'pending'</code></li>
+      <li><code>App.js processRequestStart()</code> parses the request body to extract the query, variables, and name, then creates a pending entry in Redux with <code>status: 'pending'</code>. For batch <code>/nrql</code> endpoint requests containing multiple queries, each query gets its own pending entry with a compound <code>requestId</code> (<code>requestId + ':nrql:' + idx</code>).</li>
       <li>The UI immediately shows the request with a yellow pulsing timer displaying elapsed time (<code>Date.now() - startTime</code>)</li>
     </ul>
     <h3>Phase 2 — Request Complete</h3>
@@ -144,7 +144,7 @@
       <li>Contains: <code>requestId</code>, <code>url</code>, <code>requestBody</code>, <code>responseBody</code>, <code>timing</code> (startTime, totalTime, blockedTime)</li>
       <li>Response body is read via <code>response.clone().text()</code> with a 5-second timeout race — if the body can't be read (cross-origin, very large), falls back to empty string</li>
       <li>XHR interception listens for <code>load</code>, <code>error</code>, and <code>abort</code> events so failed or cancelled requests are still tracked (with empty response body)</li>
-      <li><code>App.js processRequestComplete()</code> calls <code>buildGraphqlRequests</code> or <code>buildNrqlRequests</code> to parse the response, then the Redux <code>completeRequest</code> reducer finds the pending entry by <code>requestId</code> and merges in the response data</li>
+      <li><code>App.js processRequestComplete()</code> calls <code>buildGraphqlRequests</code> or <code>buildNrqlRequests</code> to parse the response, then the Redux <code>completeRequest</code> reducer finds the pending entry by <code>requestId</code> and merges in the response data. For batch NRQL responses, each query is completed with its compound <code>requestId</code> to match the corresponding pending entry.</li>
       <li>Status is set to <code>'success'</code>, <code>'error'</code>, or <code>'timeout'</code> (timeout detected by searching error messages for the word "timeout")</li>
     </ul>
     <h3>Legacy Single-Phase Path</h3>
@@ -353,6 +353,7 @@
       <li><code>matchWidgetByNrql(request, widgetMap)</code> in <code>RequestsPage.js</code> matches a captured NRQL query to a dashboard widget</li>
       <li><strong>Pass 1 — Exact match:</strong> Normalizes whitespace and compares lowercased query text</li>
       <li><strong>Pass 2 — Substring match:</strong> Checks if one query contains the other, handling NR1 runtime modifications to query aliases (e.g., <code>'Slowest 10%'</code> becoming <code>'Slowest 10% (s) (90%)'</code>). Scores matches by query length similarity, preferring the most specific (closest length) match.</li>
+      <li><strong>Pass 3 — FROM-clause + column-overlap:</strong> Extracts the <code>FROM</code> table name and <code>SELECT</code> columns from both queries. Matches when the FROM tables are identical and every SELECT column in the widget-defined query also appears in the captured query. This handles NR1 visualization transforms that inject extra columns (e.g., the logger log-table-widget adding timestamp and message columns to a user-defined query).</li>
       <li>Widget titles are also included in the search filter logic, so users can search by widget name</li>
     </ul>
   </div>
@@ -453,6 +454,37 @@
     </ul>
   </div>
 
+  <h2>Pause Listening</h2>
+  <p>How the pause/resume capture toggle works.</p>
+
+  <h3>State &amp; Persistence</h3>
+  <div class="tech-section">
+    <ul>
+      <li><code>capturePaused</code> is stored in Redux state (<code>rootSlice.js</code>) and persisted to <code>localStorage</code> following the same pattern as <code>preserveLog</code></li>
+      <li>A <code>useRef</code> (<code>capturePausedRef</code>) tracks the current value to avoid stale closures in the mount-only <code>useEffect</code> message listener in <code>App.js</code></li>
+    </ul>
+  </div>
+
+  <h3>Message Guard</h3>
+  <div class="tech-section">
+    <ul>
+      <li>When paused, the <code>onPortMessage</code> listener in <code>App.js</code> drops <code>NEW_REQUEST_START</code>, <code>NEW_REQUEST</code>, and <code>BUFFERED_REQUESTS</code> messages via an early return</li>
+      <li><code>NEW_REQUEST_COMPLETE</code> messages are <strong>not</strong> blocked — requests that were started before pausing continue to resolve normally, updating from pending to their final status</li>
+      <li>Non-request messages (<code>PAGE_NAVIGATED</code>, <code>DEBUG_INFO</code>, <code>WIDGET_MAP</code>, etc.) always flow through regardless of pause state</li>
+      <li>The background service worker is unaware of pause state and continues buffering normally. Requests that occur during the pause are not retroactively added when resuming.</li>
+    </ul>
+  </div>
+
+  <h3>UI</h3>
+  <div class="tech-section">
+    <ul>
+      <li>The toggle button is rendered in <code>Navigation.js</code> as the leftmost item in the <code>App-navSecondary</code> toolbar row</li>
+      <li>When not paused: dark yellow pill (<code>.App-pauseBtn</code>) with label "Pause listening"</li>
+      <li>When paused: green pill (<code>.App-pauseBtn--active</code>) with label "Resume listening"</li>
+      <li>The button only appears on request tabs (NerdGraph and NRQL), not on the Debug Mode tab</li>
+    </ul>
+  </div>
+
   <h2>Key Files Reference</h2>
   <div class="tech-section">
     <table>
@@ -464,7 +496,7 @@
       <tr><td><code>src/App.js</code></td><td>Main React app, Redux wiring, request processing, dashboard widget map extraction</td></tr>
       <tr><td><code>src/state/actionCreators.js</code></td><td>Redux reducers (request state, selection, filters)</td></tr>
       <tr><td><code>src/state/rootSlice.js</code></td><td>Redux slice definition and initial state</td></tr>
-      <tr><td><code>src/components/Navigation.js</code></td><td>Tab nav, Clear Log, Export, filters, User Guide button</td></tr>
+      <tr><td><code>src/components/Navigation.js</code></td><td>Tab nav, Pause Listening, Clear Log, Export, filters, User Guide button</td></tr>
       <tr><td><code>src/components/RequestsPage.js</code></td><td>Left/right panel layout, search within result, banners (owning team, widget, error, inaccessible), Locate on Page button</td></tr>
       <tr><td><code>src/components/Log.js</code></td><td>Result list with sorting, select all, search filter</td></tr>
       <tr><td><code>src/components/LogEntry.js</code></td><td>Individual result row with live timer, status colors</td></tr>

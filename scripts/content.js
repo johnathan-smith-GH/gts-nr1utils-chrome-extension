@@ -138,10 +138,11 @@
   var _listenersRegistered = false;
   var _highlightDebounce = null;
 
-  function highlightWidgetOnPage(widgetTitle, widgetId, pageName) {
+  function highlightWidgetOnPage(widgetTitle, widgetId, pageName, occurrenceIndex) {
     // Cancel any in-progress highlight and start fresh
     _isHighlighting = true;
     var LOG = '[NR1 Utils Locate]';
+    occurrenceIndex = (occurrenceIndex === undefined || occurrenceIndex === null) ? 0 : occurrenceIndex;
 
     var existing = document.getElementById('nr1-utils-widget-highlight');
     if (existing) existing.remove();
@@ -165,7 +166,7 @@
           tabs[ti].click();
           // Re-run after page renders (omit pageName to avoid infinite loop)
           _isHighlighting = false;
-          setTimeout(function () { highlightWidgetOnPage(widgetTitle, widgetId); }, 600);
+          setTimeout(function () { highlightWidgetOnPage(widgetTitle, widgetId, undefined, occurrenceIndex); }, 600);
           return;
         }
       }
@@ -186,10 +187,8 @@
       // Falls back to a textContent-only check for dashboard widgets that may
       // not use headings.
       var cards = document.querySelectorAll('[class*="CardBase"], [class*="card-base"], section, article');
-      var bestCardHeading = null;
-      var bestCardHeadingArea = Infinity;
-      var bestCardText = null;
-      var bestCardTextArea = Infinity;
+      var allCardsWithHeading = [];
+      var allCardsWithText = [];
       for (var ci = 0; ci < cards.length; ci++) {
         var card = cards[ci];
         var cardRect = card.getBoundingClientRect();
@@ -197,7 +196,6 @@
         if (cardRect.width > window.innerWidth * 0.6) continue;
         var cardText = card.textContent.toLowerCase();
         if (cardText.indexOf(titleLower) === -1) continue;
-        var area = cardRect.width * cardRect.height;
         // Check if a heading inside the card matches the title
         var headings = card.querySelectorAll('h1,h2,h3,h4,h5,h6');
         var hasHeading = false;
@@ -207,19 +205,19 @@
             break;
           }
         }
-        if (hasHeading && area < bestCardHeadingArea) {
-          bestCardHeadingArea = area;
-          bestCardHeading = card;
-        } else if (!hasHeading && area < bestCardTextArea) {
-          bestCardTextArea = area;
-          bestCardText = card;
+        if (hasHeading) {
+          allCardsWithHeading.push(card);
+        } else {
+          allCardsWithText.push(card);
         }
       }
-      if (bestCardHeading) {
-        return { el: bestCardHeading, strategy: '0: card with heading title', _isContainer: true };
-      }
-      if (bestCardText) {
-        return { el: bestCardText, strategy: '0: card containing title text', _isContainer: true };
+      var cardPool = allCardsWithHeading.length > 0 ? allCardsWithHeading : allCardsWithText;
+      if (cardPool.length > 0) {
+        cardPool.sort(function (a, b) {
+          return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+        });
+        var cardIdx = Math.min(occurrenceIndex, cardPool.length - 1);
+        return { el: cardPool[cardIdx], strategy: '0: card title (occurrence ' + cardIdx + ')', _isContainer: true };
       }
 
       // Helper: skip elements inside buttons, tabs, or navigation controls
@@ -236,12 +234,20 @@
       }
 
       // Strategy 1: Exact leaf-node textContent match (skip nav/button elements)
+      var leafMatches = [];
       for (var i = 0; i < headingElements.length; i++) {
         var el = headingElements[i];
         var text = (el.textContent || '').trim().toLowerCase();
         if (text === titleLower && el.children.length === 0 && !isInsideControl(el)) {
-          return { el: el, strategy: '1: exact leaf-node textContent' };
+          leafMatches.push(el);
         }
+      }
+      if (leafMatches.length > 0) {
+        leafMatches.sort(function (a, b) {
+          return (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+        });
+        var leafIdx = Math.min(occurrenceIndex, leafMatches.length - 1);
+        return { el: leafMatches[leafIdx], strategy: '1: exact leaf-node textContent (occurrence ' + leafIdx + ')' };
       }
 
       // Strategy 2: innerText match on small elements
@@ -410,10 +416,11 @@
         var jumpDistance = (scrollEl.clientHeight || window.innerHeight) + 200;
         scrollEl.scrollTop = origTop + jumpDistance;
 
-        requestAnimationFrame(function () {
+        setTimeout(function () {
           scrollEl.scrollTop = origTop;
           spacer.remove();
-        });
+          scrollEl.dispatchEvent(new Event('scroll', { bubbles: true }));
+        }, 400);
       }
 
       function showOverlayAndFade() {
@@ -567,7 +574,7 @@
           clearTimeout(_highlightDebounce);
           _highlightDebounce = setTimeout(function () {
             console.log('[NR1 Utils content] HIGHLIGHT_WIDGET received:', message.widgetTitle);
-            highlightWidgetOnPage(message.widgetTitle, message.widgetId, message.pageName);
+            highlightWidgetOnPage(message.widgetTitle, message.widgetId, message.pageName, message.occurrenceIndex || 0);
           }, 100);
         }
       });

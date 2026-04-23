@@ -4,11 +4,12 @@ A Chrome extension for GTS engineers that intercepts and analyzes NerdGraph and 
 
 Consolidates troubleshooting workflows that typically require juggling browser developer tools, the NR1 Debug Mode panel, and information scattered across the New Relic UI into a single side panel.
 
-**Version:** 1.11.0
+**Version:** 1.12.0
 
 ## Features
 
 - NerdGraph and NRQL request capture with live status monitoring
+- Pause/resume capture to freeze the results list during dashboard refresh cycles
 - Distributed tracing API capture with TRACE badge and Locate on Page
 - Dashboard widget correlation with Locate on Page highlighting
 - Error, timeout, and multi-account detection

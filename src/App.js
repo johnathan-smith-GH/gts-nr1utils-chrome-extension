@@ -31,6 +31,7 @@ const mapStateToProps = state => ({
   currentPage: state.currentPage,
   currentQueryIdx: state.currentQueryIdx,
   preserveLog: state.preserveLog,
+  capturePaused: state.capturePaused,
   windowHeight: state.windowHeight,
   logFilter: state.logFilter,
   gqlRequests: state.gqlRequests,
@@ -49,6 +50,7 @@ const mapDispatchToProps = {
   setCurrentPage: pageName => actions.setCurrentPage(pageName),
   setCurrentQueryIdx: idx => actions.setCurrentQueryIdx(idx),
   setPreserveLog: event => actions.setPreserveLog(event.target.checked),
+  setCapturePaused: value => actions.setCapturePaused(value),
   setWindowHeight: windowHeight => actions.setWindowHeight(windowHeight),
   setLogFilter: event => actions.setLogFilter(event.target.value),
   updateGqlRequests: reqs => actions.updateGqlRequests(reqs),
@@ -127,6 +129,8 @@ const App = props => {
   // Ref to avoid stale closure when reading preserveLog inside mount-only effect
   const preserveLogRef = useRef(props.preserveLog);
   preserveLogRef.current = props.preserveLog;
+  const capturePausedRef = useRef(props.capturePaused);
+  capturePausedRef.current = props.capturePaused;
 
   const processRequestRef = useRef(null);
   const processRequestStartRef = useRef(null);
@@ -270,35 +274,30 @@ const App = props => {
       }
 
       if (url.pathname.includes('/nrql')) {
-        var nrqlQuery = '';
-        var nrqlName = 'Pending NRQL';
-        var nrqlVars = {};
-        var nrqlType = 'RAW';
         try {
           var nrqlPayload = JSON.parse(requestPayloadText);
           var nrqlPayloads = Array.isArray(nrqlPayload) ? nrqlPayload : [nrqlPayload];
-          var firstPayload = nrqlPayloads[0];
-          nrqlQuery = firstPayload.nrql || firstPayload.query || '';
-          nrqlVars = { accountId: firstPayload.account_id };
-          nrqlType = firstPayload.raw ? 'RAW' : 'CHART';
-          var fromMatch = nrqlQuery.match(/from\s+(\S+)/i);
-          nrqlName = fromMatch ? fromMatch[1] : nrqlQuery.slice(0, 24) || 'Pending NRQL';
+          var pendingNrqlList = nrqlPayloads.map(function (payload, idx) {
+            var q = payload.nrql || payload.query || '';
+            var fromMatch = q.match(/from\s+(\S+)/i);
+            var obj = {
+              requestId: nrqlPayloads.length > 1 ? data.requestId + ':nrql:' + idx : data.requestId,
+              id: -1,
+              variables: { accountId: payload.account_id },
+              query: q,
+              response: null,
+              errors: null,
+              type: payload.raw ? 'RAW' : 'CHART',
+              name: fromMatch ? fromMatch[1] : q.slice(0, 24) || 'Pending NRQL',
+              status: 'pending',
+              timing: { startTime: data.startTime, totalTime: 0, blockedTime: 0 }
+            };
+            if (data.componentHint) obj.componentHint = data.componentHint;
+            if (data.stackSummary) obj.stackSummary = data.stackSummary;
+            return obj;
+          });
+          addPendingNrqlRequest(pendingNrqlList);
         } catch (e) {}
-        var nrqlPendingObj = {
-          requestId: data.requestId,
-          id: -1,
-          variables: nrqlVars,
-          query: nrqlQuery,
-          response: null,
-          errors: null,
-          type: nrqlType,
-          name: nrqlName,
-          status: 'pending',
-          timing: { startTime: data.startTime, totalTime: 0, blockedTime: 0 }
-        };
-        if (data.componentHint) nrqlPendingObj.componentHint = data.componentHint;
-        if (data.stackSummary) nrqlPendingObj.stackSummary = data.stackSummary;
-        addPendingNrqlRequest([nrqlPendingObj]);
       }
 
       // DT requests are handled in processRequestComplete — no pending entry needed
@@ -358,9 +357,10 @@ const App = props => {
 
       if (url.pathname.includes('/nrql')) {
         const nrqlRequests = buildNrqlRequests(requestPayloadText, responseText, timing);
-        nrqlRequests.forEach(function (req) {
+        nrqlRequests.forEach(function (req, idx) {
+          var effectiveId = nrqlRequests.length > 1 ? data.requestId + ':nrql:' + idx : data.requestId;
           completeRequest({
-            requestId: data.requestId,
+            requestId: effectiveId,
             updates: {
               query: req.query,
               variables: req.variables,
@@ -398,6 +398,14 @@ const App = props => {
 
     // Listen for messages from the service worker via port
     const onPortMessage = message => {
+      // Drop new request messages while capture is paused (but allow completions
+      // for in-flight requests so pending entries resolve normally)
+      if (capturePausedRef.current && (
+        message.action === 'NEW_REQUEST_START' ||
+        message.action === 'NEW_REQUEST' ||
+        message.action === 'BUFFERED_REQUESTS'
+      )) return;
+
       if (message.action === 'NEW_REQUEST_START') {
         processRequestStartRef.current(message);
       }
@@ -478,6 +486,8 @@ const App = props => {
     currentQueryIdx,
     logFilter,
     preserveLog,
+    capturePaused,
+    setCapturePaused,
     windowHeight,
     gqlRequests,
     nrqlRequests,
@@ -541,7 +551,9 @@ const App = props => {
     visibleLogData: visibleLogData,
     allRequests: { gqlRequests: gqlRequests, nrqlRequests: nrqlRequests },
     selectedRequestIds: selectedRequestIds,
-    selectedCount: selectedRequestIds.length
+    selectedCount: selectedRequestIds.length,
+    capturePaused: capturePaused,
+    handleCapturePaused: setCapturePaused
   }), currentPage === PageName.GRAPHQL_REQUESTS && /*#__PURE__*/React.createElement(RequestsPage, {
     windowHeight: windowHeight,
     logData: gqlRequests,
@@ -578,7 +590,8 @@ const App = props => {
         action: 'HIGHLIGHT_WIDGET',
         widgetTitle: widget.title,
         widgetId: widget.widgetId,
-        pageName: widget.pageName
+        pageName: widget.pageName,
+        occurrenceIndex: widget.occurrenceIndex || 0
       });
     }
   }), currentPage === PageName.DEBUG_INFO && /*#__PURE__*/React.createElement(DebugInfoPage, {

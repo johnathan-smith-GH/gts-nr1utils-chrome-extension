@@ -21,6 +21,8 @@ const Navigation = props => {
     setShowOnlyErrors,
     showOnlyTimeouts,
     setShowOnlyTimeouts,
+    capturePaused,
+    handleCapturePaused,
     logData,
     visibleLogData,
     allRequests,
@@ -112,6 +114,13 @@ const Navigation = props => {
   }, "User Guide")), isRequestPage && /*#__PURE__*/React.createElement("section", {
     className: "App-navSecondary"
   }, /*#__PURE__*/React.createElement("a", {
+    role: "button",
+    tabIndex: "0",
+    className: "App-pauseBtn" + (capturePaused ? " App-pauseBtn--active" : ""),
+    onClick: function () { handleCapturePaused(!capturePaused); },
+    onKeyDown: function (e) { handleTabKeyDown(e, function () { handleCapturePaused(!capturePaused); }); },
+    title: capturePaused ? "Resume capturing requests" : "Pause capturing new requests"
+  }, capturePaused ? "Resume listening" : "Pause listening"), /*#__PURE__*/React.createElement("a", {
     role: "button",
     tabIndex: "0",
     className: "App-clearLog",

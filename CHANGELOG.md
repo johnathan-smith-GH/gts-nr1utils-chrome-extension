@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.12.0
+### New Features
+- Add Pause Listening toggle — pauses acceptance of new requests in the side panel while allowing in-flight requests to resolve normally. Button displays as dark yellow when paused (with "Resume listening" label) and green when active. State persists via localStorage.
+- Add FROM-clause + column-overlap fallback for widget correlation — matches captured NRQL to dashboard widgets when NR1 visualization transforms inject extra SELECT columns (e.g., logger.log-table-widget adding columns). Compares FROM tables for equality and checks that all stored SELECT columns appear in the captured query.
+- Add Locate on Page support for untitled widgets — the button now appears when a widget has a widgetId even if its title is empty
+
+### Bug Fixes
+- Fix batch NRQL requests showing as perpetually pending — `/nrql` endpoint responses containing multiple queries now use compound requestIds (`requestId + ':nrql:' + idx`) so each query gets its own pending entry and completion
+- Fix widget placeholder (grey DEFINED entry) never resolving to green for batch NRQL requests — placeholder suppression now uses the same FROM-clause + column-overlap matching as widget correlation
+
 ## 1.11.0
 ### New Features
 - Add distributed tracing API capture — requests to `distributed-tracing.service.newrelic.com` now appear in the NRQL tab with a TRACE badge

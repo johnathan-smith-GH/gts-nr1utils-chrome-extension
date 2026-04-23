@@ -141,6 +141,7 @@
       <li><a href="#getting-started">Getting Started</a></li>
       <li><a href="#toolbar-controls">Toolbar Controls</a>
         <ul>
+          <li><a href="#pause-listening">Pause Listening</a></li>
           <li><a href="#search-and-filters">Search &amp; Filters</a></li>
           <li><a href="#exporting">Exporting Results</a></li>
           <li><a href="#preserve-clear">Preserve Log &amp; Clear Log</a></li>
@@ -221,6 +222,16 @@
 
   <h2 id="toolbar-controls">Toolbar Controls</h2>
   <div class="section">
+    <h3 id="pause-listening">Pause Listening</h3>
+    <p>The <span class="pill pill-yellow">PAUSE LISTENING</span> button freezes the results list so no new requests are added. This is useful on dashboards where widget refresh cycles generate repeated entries for the same queries.</p>
+    <ul>
+      <li>Click <span class="pill pill-yellow">PAUSE LISTENING</span> to stop accepting new requests. The button turns green and changes to <span class="pill pill-green">RESUME LISTENING</span>.</li>
+      <li>Requests that were already in flight (started before pausing) will still complete and update from pending to their final status.</li>
+      <li>The background service worker continues buffering as usual — pausing only affects what the side panel displays. Requests that occur during the pause are not retroactively added when resuming.</li>
+      <li>Click <span class="pill pill-green">RESUME LISTENING</span> to begin accepting new requests again.</li>
+      <li>The pause state persists across sessions (saved to localStorage).</li>
+    </ul>
+
     <h3 id="search-and-filters">Search &amp; Filters</h3>
     <p>The <strong>"Search for results"</strong> field at the top of the left panel filters results by searching across the entire request — query text, variables, response data, errors, and all other fields. When dashboard widgets are detected, search also matches against widget titles and page names.</p>
     <p>Additional filter toggles:</p>
@@ -314,12 +325,12 @@
     <ul>
       <li>The extension captures the <code>GetDashboardEntityQuery</code> response, which contains every widget's title, ID, page name, and NRQL queries.</li>
       <li>When you click on a NRQL result, the extension compares the captured query text against the widget definitions to find a match.</li>
-      <li>Matching uses exact comparison first, then falls back to substring containment to handle cases where NR1 modifies query aliases at runtime.</li>
+      <li>Matching uses exact comparison first, then falls back to substring containment to handle NR1 runtime alias modifications, then falls back to FROM-clause + column-overlap matching for visualization transforms that inject extra SELECT columns (e.g., logger log-table widgets).</li>
     </ul>
     <p>The search filter also matches against widget titles. For example, searching for "App Usage" will find the NRQL result that corresponds to the "App Usage" widget on the dashboard.</p>
 
     <h3 id="locate-on-page">Locate on Page</h3>
-    <p>When a NRQL result is matched to a dashboard widget, a <span class="pill" style="background:#7c3aed;">LOCATE ON PAGE</span> button appears in the toolbar next to "Copy JSON to Clipboard". Clicking it scrolls the page to the corresponding widget and highlights it with a purple overlay that fades after 2 seconds.</p>
+    <p>When a NRQL result is matched to a dashboard widget, a <span class="pill" style="background:#7c3aed;">LOCATE ON PAGE</span> button appears in the toolbar next to "Copy JSON to Clipboard". Clicking it scrolls the page to the corresponding widget and highlights it with a purple overlay that fades after 2 seconds. The button also appears for widgets that have no title, as long as a widget ID is available.</p>
     <p>For widgets that are below the fold and not yet rendered by New Relic (which lazy-loads widgets via IntersectionObserver), the extension automatically scrolls the dashboard incrementally to trigger rendering, then locates and highlights the widget once it appears in the DOM.</p>
 
     <h3 id="widget-placeholders">Widget Placeholders</h3>

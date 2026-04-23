@@ -1,6 +1,6 @@
 import { createSlice } from '../../snowpack/pkg/@reduxjs/toolkit.js';
 import { PageName } from '../types.js';
-import { setCurrentPage, setCurrentQueryIdx, setPreserveLog, setWindowHeight, setLogFilter, updateGqlRequests, clearLog, clearAllRequests, updateNrqlRequests, setShowOnlyErrors, setShowOnlyTimeouts, setDebugPlatformInfo, setDebugNerdpacks, setDebugCurrentNerdlet, resetDebugInfo, toggleSelectedIndex, selectAllVisible, clearSelectedIndices, addPendingGqlRequest, addPendingNrqlRequest, completeRequest, setWidgetMap } from './actionCreators.js';
+import { setCurrentPage, setCurrentQueryIdx, setPreserveLog, setCapturePaused, setWindowHeight, setLogFilter, updateGqlRequests, clearLog, clearAllRequests, updateNrqlRequests, setShowOnlyErrors, setShowOnlyTimeouts, setDebugPlatformInfo, setDebugNerdpacks, setDebugCurrentNerdlet, resetDebugInfo, toggleSelectedIndex, selectAllVisible, clearSelectedIndices, addPendingGqlRequest, addPendingNrqlRequest, completeRequest, setWidgetMap } from './actionCreators.js';
 
 function safeParseBool(key, defaultValue) {
   try {
@@ -15,6 +15,7 @@ const initialState = {
   currentPage: PageName.GRAPHQL_REQUESTS,
   currentQueryIdx: undefined,
   preserveLog: safeParseBool('preserveLog', false),
+  capturePaused: safeParseBool('capturePaused', false),
   windowHeight: undefined,
   logFilter: '',
   gqlRequests: [],
@@ -36,6 +37,7 @@ const rootSlice = createSlice({
     setCurrentPage,
     setCurrentQueryIdx,
     setPreserveLog,
+    setCapturePaused,
     setWindowHeight,
     setLogFilter,
     updateGqlRequests,

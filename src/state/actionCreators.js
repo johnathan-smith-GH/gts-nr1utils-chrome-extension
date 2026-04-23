@@ -1,5 +1,5 @@
 /* eslint-disable no-param-reassign */
-import matchWidgetByNrql, { buildWidgetNrqlIndex } from '../utils/matchWidgetByNrql.js';
+import matchWidgetByNrql, { buildWidgetNrqlIndex, matchAllWidgetsByNrql } from '../utils/matchWidgetByNrql.js';
 
 var MAX_REQUESTS = 2000;
 
@@ -32,6 +32,77 @@ function buildSearchableText(req) {
   }
   return parts.join(' ').toLowerCase();
 }
+
+function computeOccurrenceIndex(matched, widgetMap) {
+  if (!matched || !widgetMap || !widgetMap.length) return 0;
+  var title = (matched.title || '').toLowerCase();
+  var page = (matched.pageName || '').toLowerCase();
+  var siblings = [];
+  for (var i = 0; i < widgetMap.length; i++) {
+    var w = widgetMap[i];
+    if ((w.title || '').toLowerCase() === title && (w.pageName || '').toLowerCase() === page) {
+      siblings.push(w);
+    }
+  }
+  if (siblings.length <= 1) return 0;
+  siblings.sort(function (a, b) {
+    var aRow = (a.layout && a.layout.row) || 0;
+    var bRow = (b.layout && b.layout.row) || 0;
+    if (aRow !== bRow) return aRow - bRow;
+    var aCol = (a.layout && a.layout.column) || 0;
+    var bCol = (b.layout && b.layout.column) || 0;
+    return aCol - bCol;
+  });
+  for (var j = 0; j < siblings.length; j++) {
+    if (siblings[j].widgetId === matched.widgetId) return j;
+  }
+  return 0;
+}
+
+// Build a set of already-claimed "title|page|occurrenceIndex" slots from matched requests.
+function getClaimedSlots(requests) {
+  var slots = {};
+  for (var i = 0; i < requests.length; i++) {
+    var mw = requests[i]._matchedWidget;
+    if (mw && mw.title != null && mw.pageName != null && mw.occurrenceIndex != null) {
+      var key = (mw.title || '').toLowerCase() + '|' + (mw.pageName || '').toLowerCase() + '|' + mw.occurrenceIndex;
+      slots[key] = true;
+    }
+  }
+  return slots;
+}
+
+// Match a request to a widget, spreading duplicate-query siblings across occurrence slots.
+// claimedSlots is an object updated in-place so callers in the same batch don't double-assign.
+function computeMatchWithSlot(query, widgetMap, index, claimedSlots) {
+  var candidates = matchAllWidgetsByNrql(query, widgetMap, index);
+  if (!candidates || !candidates.length) return null;
+
+  // Sort candidates by layout position (top-left first) so slot 0 = topmost widget
+  candidates.sort(function (a, b) {
+    var aRow = (a.layout && a.layout.row) || 0;
+    var bRow = (b.layout && b.layout.row) || 0;
+    if (aRow !== bRow) return aRow - bRow;
+    var aCol = (a.layout && a.layout.column) || 0;
+    var bCol = (b.layout && b.layout.column) || 0;
+    return aCol - bCol;
+  });
+
+  for (var i = 0; i < candidates.length; i++) {
+    var c = candidates[i];
+    var occIdx = computeOccurrenceIndex(c, widgetMap);
+    var slotKey = (c.title || '').toLowerCase() + '|' + (c.pageName || '').toLowerCase() + '|' + occIdx;
+    if (!claimedSlots[slotKey]) {
+      claimedSlots[slotKey] = true;
+      return { title: c.title, widgetId: c.widgetId, pageName: c.pageName, occurrenceIndex: occIdx };
+    }
+  }
+
+  // All sibling slots already claimed (e.g. same widget fires multiple requests) — reuse first
+  var first = candidates[0];
+  return { title: first.title, widgetId: first.widgetId, pageName: first.pageName, occurrenceIndex: computeOccurrenceIndex(first, widgetMap) };
+}
+
 const setCurrentPage = (state, action) => {
   state.currentPage = action.payload;
   state.currentQueryIdx = undefined;
@@ -47,6 +118,12 @@ const setCurrentQueryIdx = (state, action) => {
 const setPreserveLog = (state, action) => {
   state.preserveLog = action.payload;
   try { localStorage.setItem('preserveLog', `${action.payload}`); } catch (e) {}
+  return state;
+};
+
+const setCapturePaused = (state, action) => {
+  state.capturePaused = action.payload;
+  try { localStorage.setItem('capturePaused', `${action.payload}`); } catch (e) {}
   return state;
 };
 
@@ -92,12 +169,11 @@ const updateNrqlRequests = (state, action) => {
   var wm = state.widgetMap;
   var wmIdx = state._widgetNrqlIndex || null;
   if (wm && wm.length) {
+    var claimedSlots = getClaimedSlots(state.nrqlRequests);
     newReqs.forEach(function (req) {
       if (!req._matchedWidget && req.query) {
-        var matched = matchWidgetByNrql(req.query, wm, wmIdx);
-        if (matched) {
-          req._matchedWidget = { title: matched.title, widgetId: matched.widgetId, pageName: matched.pageName };
-        }
+        var mw = computeMatchWithSlot(req.query, wm, wmIdx, claimedSlots);
+        if (mw) req._matchedWidget = mw;
       }
     });
   }
@@ -194,12 +270,11 @@ const addPendingNrqlRequest = (state, action) => {
   var wm = state.widgetMap;
   var wmIdx = state._widgetNrqlIndex || null;
   if (wm && wm.length) {
+    var claimedSlots = getClaimedSlots(state.nrqlRequests);
     newReqs.forEach(function (req) {
       if (!req._matchedWidget && req.query) {
-        var matched = matchWidgetByNrql(req.query, wm, wmIdx);
-        if (matched) {
-          req._matchedWidget = { title: matched.title, widgetId: matched.widgetId, pageName: matched.pageName };
-        }
+        var mw = computeMatchWithSlot(req.query, wm, wmIdx, claimedSlots);
+        if (mw) req._matchedWidget = mw;
       }
     });
   }
@@ -225,11 +300,29 @@ const completeRequest = (state, action) => {
   for (var j = 0; j < state.nrqlRequests.length; j++) {
     if (state.nrqlRequests[j].requestId === requestId && !nrqlUpdated) {
       var merged = safeAssign(Object.assign({}, state.nrqlRequests[j]), updates);
-      if (!merged._matchedWidget && merged.query && state.widgetMap && state.widgetMap.length) {
-        var wMatch = matchWidgetByNrql(merged.query, state.widgetMap, state._widgetNrqlIndex || null);
-        if (wMatch) {
-          merged._matchedWidget = { title: wMatch.title, widgetId: wMatch.widgetId, pageName: wMatch.pageName };
+      // Token-based linking: async poll responses (completed=true) inherit _matchedWidget from
+      // the corresponding initial request (same token, completed=false). This corrects the
+      // wrong slot assignment made at REQUEST_START time when all widget slots were already claimed.
+      var pollToken = updates.response && updates.response[0] && updates.response[0].progress &&
+                      updates.response[0].progress.completed === true &&
+                      updates.response[0].progress.token;
+      if (pollToken) {
+        for (var k = 0; k < state.nrqlRequests.length; k++) {
+          var r = state.nrqlRequests[k];
+          if (r.requestId !== requestId &&
+              r.response && r.response[0] && r.response[0].progress &&
+              r.response[0].progress.token === pollToken &&
+              r.response[0].progress.completed === false &&
+              r._matchedWidget) {
+            merged._matchedWidget = r._matchedWidget;
+            break;
+          }
         }
+      }
+      if (!merged._matchedWidget && merged.query && state.widgetMap && state.widgetMap.length) {
+        var completeSlots = getClaimedSlots(state.nrqlRequests);
+        var mwComplete = computeMatchWithSlot(merged.query, state.widgetMap, state._widgetNrqlIndex || null, completeSlots);
+        if (mwComplete) merged._matchedWidget = mwComplete;
       }
       merged._searchableText = buildSearchableText(merged);
       state.nrqlRequests[j] = merged;
@@ -254,15 +347,13 @@ const setWidgetMap = (state, action) => {
   // Eagerly match existing NRQL requests to widgets
   var fullMap = state.widgetMap;
   var idx = state._widgetNrqlIndex;
+  // Pre-claim slots from requests already matched (e.g. on a second setWidgetMap call)
+  var eagerSlots = getClaimedSlots(state.nrqlRequests.filter(function (r) { return !!r._matchedWidget; }));
   state.nrqlRequests.forEach(function (req) {
     if (!req._matchedWidget && req.query) {
-      var matched = matchWidgetByNrql(req.query, fullMap, idx);
-      if (matched) {
-        req._matchedWidget = {
-          title: matched.title,
-          widgetId: matched.widgetId,
-          pageName: matched.pageName
-        };
+      var mwEager = computeMatchWithSlot(req.query, fullMap, idx, eagerSlots);
+      if (mwEager) {
+        req._matchedWidget = mwEager;
         req._searchableText = buildSearchableText(req);
       }
     }
@@ -271,4 +362,4 @@ const setWidgetMap = (state, action) => {
   return state;
 };
 
-export { setCurrentPage, setCurrentQueryIdx, setPreserveLog, setWindowHeight, setLogFilter, updateGqlRequests, clearLog, clearAllRequests, updateNrqlRequests, setShowOnlyErrors, setShowOnlyTimeouts, setDebugPlatformInfo, setDebugNerdpacks, setDebugCurrentNerdlet, resetDebugInfo, toggleSelectedIndex, selectAllVisible, clearSelectedIndices, addPendingGqlRequest, addPendingNrqlRequest, completeRequest, setWidgetMap };
+export { setCurrentPage, setCurrentQueryIdx, setPreserveLog, setCapturePaused, setWindowHeight, setLogFilter, updateGqlRequests, clearLog, clearAllRequests, updateNrqlRequests, setShowOnlyErrors, setShowOnlyTimeouts, setDebugPlatformInfo, setDebugNerdpacks, setDebugCurrentNerdlet, resetDebugInfo, toggleSelectedIndex, selectAllVisible, clearSelectedIndices, addPendingGqlRequest, addPendingNrqlRequest, completeRequest, setWidgetMap };

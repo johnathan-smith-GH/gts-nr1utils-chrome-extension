@@ -110,6 +110,7 @@ const extractNrqlFromGraphql = (graphqlRequests) => {
 
   for (const gqlReq of graphqlRequests) {
     if (!gqlReq.query) continue;
+    if (/nrqlQueriedEntities/i.test(gqlReq.query || '')) continue;
 
     // Collect ALL NRQL strings from variables
     var nrqlQueries = [];
@@ -138,6 +139,9 @@ const extractNrqlFromGraphql = (graphqlRequests) => {
 
     const accountId = extractAccountId(gqlReq.variables);
     const responseData = gqlReq.response ? gqlReq.response.data : null;
+    // Skip entity correlation lookups — NR1 embeds NRQL in variables for these but they
+    // return entity metadata, not chart data, and would otherwise produce duplicate entries.
+    if (responseData && responseData.actor && responseData.actor.nrqlQueriedEntities) continue;
     const nrqlData = findNrqlData(responseData);
     const widgetHints = extractWidgetHints(gqlReq.variables, gqlReq.query);
 

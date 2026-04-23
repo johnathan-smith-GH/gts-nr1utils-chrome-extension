@@ -191,6 +191,31 @@ body {
   background-color: #21a3b1;
 }
 
+.App-pauseBtn {
+  color: #FFF !important;
+  background-color: #b8960f;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.App-pauseBtn:hover {
+  background-color: #a0820d;
+}
+
+.App-pauseBtn--active {
+  background-color: #2B8C0E;
+}
+
+.App-pauseBtn--active:hover {
+  background-color: #237a0b;
+}
+
 .App-nav--currentLink {
   background-color: var(--accent-color);
   border-color: var(--accent-color);

@@ -101,6 +101,26 @@ const RequestsPage = props => {
               break;
             }
           }
+          // FROM-clause + column overlap fallback (visualization-transformed NRQL)
+          if (!alreadyCaptured) {
+            var wFrom = norm.match(/\bfrom\s+(.+?)(?:\s+where\b|\s+since\b|\s+until\b|\s+limit\b|\s+facet\b|\s+timeseries\b|$)/i);
+            if (wFrom) {
+              var wFromNorm = wFrom[1].replace(/\s+/g, ' ').trim();
+              var wSelect = (norm.match(/^select\s+(.+?)\s+from\b/i) || [])[1];
+              if (wSelect) {
+                var wCols = wSelect.split(',').map(function (c) { return c.trim().replace(/\s+as\s+.+$/i, '').trim(); });
+                for (var fi = 0; fi < capturedNormList.length; fi++) {
+                  var cFrom = capturedNormList[fi].match(/\bfrom\s+(.+?)(?:\s+where\b|\s+since\b|\s+until\b|\s+limit\b|\s+facet\b|\s+timeseries\b|$)/i);
+                  if (!cFrom) continue;
+                  if (cFrom[1].replace(/\s+/g, ' ').trim() !== wFromNorm) continue;
+                  var cSelect = (capturedNormList[fi].match(/^select\s+(.+?)\s+from\b/i) || [])[1];
+                  if (!cSelect) continue;
+                  var colsMatch = wCols.every(function (col) { return col && cSelect.indexOf(col) !== -1; });
+                  if (colsMatch) { alreadyCaptured = true; break; }
+                }
+              }
+            }
+          }
           if (!alreadyCaptured) {
             var fromMatch = nrql.match(/from\s+(\S+)/i);
             placeholders.push({
@@ -160,6 +180,10 @@ const RequestsPage = props => {
       return bStart - aStart;
     });
   }, [visibleRequests]);
+  var currentItemKey = currentQueryIdx !== undefined && sortedRequests[currentQueryIdx]
+    ? (sortedRequests[currentQueryIdx].requestId || sortedRequests[currentQueryIdx]._rid || sortedRequests[currentQueryIdx].query || '')
+    : '';
+
   // Track the query of the currently selected entry so we can follow it
   // when placeholder resolution causes list indices to shift
   useEffect(function () {
@@ -185,7 +209,7 @@ const RequestsPage = props => {
     if (bestIdx !== -1 && bestIdx !== currentQueryIdx) {
       setCurrentQueryIdx(bestIdx);
     }
-  }, [currentQueryIdx, sortedRequests.length]);
+  }, [currentQueryIdx, currentItemKey]);
 
   const currentQuery = currentQueryIdx !== undefined ? sortedRequests[currentQueryIdx] : undefined;
   const pageHeightStyle = {
@@ -382,7 +406,7 @@ const RequestsPage = props => {
   }, "\u2715")), /*#__PURE__*/React.createElement("div", {
     className: "App-copyResultBar"
   }, (function () {
-    if (!currentWidgetMatch) return null;
+    if (!currentWidgetMatch || (!currentWidgetMatch.title && !currentWidgetMatch.widgetId)) return null;
     return /*#__PURE__*/React.createElement("a", {
       className: "App-locateBtn",
       "aria-label": "Locate widget on page",

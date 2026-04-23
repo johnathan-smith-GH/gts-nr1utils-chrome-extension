@@ -31,11 +31,20 @@ var DEBUG_CACHE_TTL = 300000; // 5 minutes
 var saveTimer = null;
 function debouncedSave() {
   // Save request buffer immediately (critical data, avoid loss on unload)
-  chrome.storage.session.set({ requestBuffer: requestBuffer, preserveLog: preserveLog, widgetMap: widgetMap });
+  chrome.storage.session.set({ requestBuffer: requestBuffer, preserveLog: preserveLog, widgetMap: widgetMap })
+    .catch(function (e) {
+      if (e && e.message && e.message.toLowerCase().includes('quota')) {
+        console.warn('[NR1 Utils] Session storage quota exceeded — retrying with trimmed buffer.');
+        var trimmed = requestBuffer.slice(-Math.floor(requestBuffer.length / 2));
+        chrome.storage.session.set({ requestBuffer: trimmed, preserveLog: preserveLog, widgetMap: widgetMap })
+          .catch(function (e2) { console.warn('[NR1 Utils] Session storage still full after trim:', e2 && e2.message); });
+      }
+    });
   // Debounce debug cache (less critical)
   clearTimeout(saveTimer);
   saveTimer = setTimeout(function () {
-    chrome.storage.session.set({ debugInfoCache: debugInfoCache });
+    chrome.storage.session.set({ debugInfoCache: debugInfoCache })
+      .catch(function (e) { console.warn('[NR1 Utils] Failed to save debug cache:', e && e.message); });
   }, 1000);
 }
 
@@ -152,7 +161,8 @@ chrome.runtime.onConnect.addListener(function (port) {
             action: 'HIGHLIGHT_WIDGET',
             widgetTitle: message.widgetTitle,
             widgetId: message.widgetId,
-            pageName: message.pageName
+            pageName: message.pageName,
+            occurrenceIndex: message.occurrenceIndex || 0
           }).catch(function (err) {
             console.warn('[NR1 Utils bg] sendMessage failed:', err.message || err);
             // Fallback: try all NR tabs
@@ -163,7 +173,8 @@ chrome.runtime.onConnect.addListener(function (port) {
                   action: 'HIGHLIGHT_WIDGET',
                   widgetTitle: message.widgetTitle,
                   widgetId: message.widgetId,
-                  pageName: message.pageName
+                  pageName: message.pageName,
+                  occurrenceIndex: message.occurrenceIndex || 0
                 }).catch(function () {});
               }
             });
